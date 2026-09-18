@@ -40,6 +40,50 @@ def render_markdown(result: AuditResult) -> str:
     return "\n".join(lines) + "\n"
 
 
+def render_html(result: AuditResult, tag: str = "") -> str:
+    """Self-contained HTML report with base64-embedded charts. No network needed."""
+    from .charts import (accuracy_coverage_png, png_to_data_uri,
+                         reliability_diagram_png)
+    d = result.to_dict()
+    rel = png_to_data_uri(reliability_diagram_png(result))
+    acc = png_to_data_uri(accuracy_coverage_png(result))
+    banner = f'<div class="banner">⚠️ {tag}</div>' if tag else ""
+    curve_rows = "".join(
+        f"<tr><td>{r['coverage']:.0%}</td><td>{r['accuracy']:.1%}</td>"
+        f"<td>{r['min_confidence']:.2f}</td><td>{r['n']}</td></tr>"
+        for r in d["accuracy_coverage"][::2])
+    bin_rows = "".join(
+        f"<tr><td>{b['bin']}</td><td>{b['avg_confidence']:.3f}</td>"
+        f"<td>{b['accuracy']:.1%}</td><td>{b['n']}</td></tr>"
+        for b in d["reliability_bins"] if b["n"])
+    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<title>Audit report — {d['judge']}</title>
+<style>body{{font-family:system-ui,sans-serif;max-width:900px;margin:2rem auto;padding:0 1rem;color:#1a1a1a}}
+.banner{{background:#fff3cd;border:1px solid #e6a800;padding:.75rem;border-radius:8px;font-weight:600}}
+.metric{{font-size:1.1rem}}.metric b{{font-size:1.6rem}}
+table{{border-collapse:collapse;width:100%;margin:1rem 0}}td,th{{border:1px solid #ddd;padding:.4rem .6rem;text-align:right}}
+th{{background:#f5f5f5}}img{{max-width:100%;border:1px solid #eee;border-radius:8px;margin:1rem 0}}
+h2{{margin-top:2.5rem}}</style></head><body>
+{banner}
+<h1>Audit report — {d['judge']}</h1>
+<p class="metric"><b>{d['n']}</b> decisions · accuracy <b>{d['accuracy']:.1%}</b> · ECE <b>{d['ece']:.4f}</b><br>
+cost <b>${d['total_cost_usd']:.4f}</b> · p50 <b>{d['p50_latency_s']}s</b> · p99 <b>{d['p99_latency_s']}s</b></p>
+<h2>Can I automate this?</h2>
+<p>Zero observed errors through the most confident <b>{d['zero_error_coverage']['coverage']:.1%}</b>
+({d['zero_error_coverage']['n']} decisions, confidence ≥ {d['zero_error_coverage']['threshold']}).<br>
+<em>Retrospective on this dataset — not a production guarantee.</em></p>
+<h2>Reliability diagram</h2>
+<img src="{rel}" alt="reliability diagram">
+<h2>Accuracy vs coverage</h2>
+<img src="{acc}" alt="accuracy coverage curve">
+<table><tr><th>coverage</th><th>accuracy</th><th>min confidence</th><th>n</th></tr>{curve_rows}</table>
+<h2>Calibration bins</h2>
+<table><tr><th>bin</th><th>avg confidence</th><th>accuracy</th><th>n</th></tr>{bin_rows}</table>
+<p><em>A perfectly honest judge sits on the diagonal: avg confidence == accuracy in every bin.</em></p>
+</body></html>
+"""
+
+
 def check_drift(current: AuditResult, baseline_path: str,
                 max_ece_drift: float = 0.02, max_acc_drop: float = 0.01) -> list[str]:
     """CI gate: fail the build when the judge degrades vs baseline."""
