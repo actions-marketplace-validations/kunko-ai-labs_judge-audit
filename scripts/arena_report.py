@@ -104,7 +104,7 @@ def summarize(recs: list[dict], dataset: str, rows: list[dict] | None = None) ->
         "n": len(recs), "accuracy": round(sum(ok) / len(ok), 4),
         "ece": round(expected_calibration_error(conf, ok), 4),
         "zero_error_coverage": zero_error_coverage(conf, ok)["coverage"],
-        # 95 % percentile-bootstrap intervals over rows (seed 0), see docs/judges.md.
+        # 95 % percentile-bootstrap intervals (seed 0) over distinct texts, see docs/judges.md.
         "accuracy_ci": list(accuracy_ci(ok, groups=groups)),
         "ece_ci": list(ece_ci(conf, ok, groups=groups)),
         "zero_error_coverage_ci": list(zero_error_coverage_ci(conf, ok, groups=groups)),
@@ -299,9 +299,32 @@ def render(judges: dict) -> str:
           "budget). They count as wrong at confidence 0 in every other column; this one keeps " +
           "format failures visible apart from judgment quality.",
           "- **zero-error coverage**: the most-confident share of decisions with no observed error — " +
-          "the automation budget. Retrospective on this dataset.",
+          "the automation budget. Cut at whole confidence groups: a group of tied confidences counts " +
+          "only if every decision in it is right, so the number does not depend on row order. " +
+          "Retrospective on this dataset.",
           "- Costs are as reported by each adapter (vendor list price for Jev; $0 for local models; " +
           "list price for known hosted chat models).",
+          "",
+          "## Provenance: what each judge was asked, and how", "",
+          "Read from the checkpoint headers (`docs/runs/**/*.ckpt.jsonl`), not from memory:", "",
+          "- **Every Arena run was at temperature 0, or has no temperature at all.** " +
+          "Claude Sonnet 4.5, Llama 3.3 70B and DeepSeek R1 were called through a private " +
+          "adapter module (`provider: hosted-api` in their headers) that sets temperature 0. " +
+          "Gemini 3 Flash, gemma4 and llama3.2 went through the OpenAI-compatible path " +
+          "(`provider: openai-compatible`), whose request body sets `temperature: 0`. Jev " +
+          "takes no sampling temperature — it returns a distribution rather than a sample — " +
+          "and the DeBERTa NLI control is an encoder, which does not sample either.",
+          "- **The Anthropic SDK path was not used for the Arena.** No checkpoint header " +
+          "records `provider: anthropic`. That path now sets temperature 0 too, so a future " +
+          "rerun through it is comparable with these.",
+          "- **These headers predate the provenance fields added in v0.4.0**: they record the " +
+          "provider, model and backend but not `temperature` or `prompt_sha256`, which every " +
+          "run from v0.4.0 on records in `run.judge`. The statements above are read off the " +
+          "provider each header names and the code that provider path runs, not off a " +
+          "`temperature` field in the file.",
+          "- One prompt for every chat model, unchanged across the four datasets " +
+          "(`SYSTEM` + the render template in `src/judge_audit/judges/llm.py`); Jev was shown " +
+          "the same criteria map throughout (`criteria_version` 1).",
           "",
           "## Caveats", "",
           "- Synthetic, seeded datasets (generators in `examples/`); small n; ground truth for routing " +

@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import html
 import json
+import math
+import warnings
 
 from .ground_truth import ground_truth_of
 from .runner import AuditResult
@@ -117,9 +119,13 @@ def render_html(result: AuditResult, tag: str = "") -> str:
                       for line in ci_lines(d) if line)
     rel = png_to_data_uri(reliability_diagram_png(result))
     acc = png_to_data_uri(accuracy_coverage_png(result))
-    banner = f'<div class="banner">⚠️ {tag}</div>' if tag else ""
-    prov = "<br>".join(line.strip("_") for line in provenance_lines(d.get("run", {})))
+    # Everything below is provenance a caller controls — model names, dataset paths, a
+    # judge's tag — so it is escaped before it reaches the page, not trusted as markup.
+    banner = f'<div class="banner">⚠️ {html.escape(tag)}</div>' if tag else ""
+    prov = "<br>".join(html.escape(line.strip("_"))
+                       for line in provenance_lines(d.get("run", {})))
     gt = html.escape(ground_truth_line(d.get("run", {})))
+    judge = html.escape(str(d["judge"]))
     curve_rows = "".join(
         f"<tr><td>{r['coverage']:.0%}</td><td>{r['accuracy']:.1%}</td>"
         f"<td>{r['min_confidence']:.2f}</td><td>{r['n']}</td></tr>"
@@ -129,7 +135,7 @@ def render_html(result: AuditResult, tag: str = "") -> str:
         f"<td>{b['accuracy']:.1%}</td><td>{b['n']}</td></tr>"
         for b in d["reliability_bins"] if b["n"])
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
-<title>Audit report — {d['judge']}</title>
+<title>Audit report — {judge}</title>
 <style>body{{font-family:system-ui,sans-serif;max-width:900px;margin:2rem auto;padding:0 1rem;color:#1a1a1a}}
 .banner{{background:#fff3cd;border:1px solid #e6a800;padding:.75rem;border-radius:8px;font-weight:600}}
 .metric{{font-size:1.1rem}}.metric b{{font-size:1.6rem}}
@@ -137,7 +143,7 @@ table{{border-collapse:collapse;width:100%;margin:1rem 0}}td,th{{border:1px soli
 th{{background:#f5f5f5}}img{{max-width:100%;border:1px solid #eee;border-radius:8px;margin:1rem 0}}
 h2{{margin-top:2.5rem}}.prov{{color:#666;font-size:.9rem}}</style></head><body>
 {banner}
-<h1>Audit report — {d['judge']}</h1>
+<h1>Audit report — {judge}</h1>
 <p class="metric"><b>{d['n']}</b> decisions · accuracy <b>{d['accuracy']:.1%}</b>{acc_ci} · ECE <b>{d['ece']:.4f}</b>{ece_ci}<br>
 cost <b>${d['total_cost_usd']:.4f}</b> · p50 <b>{d['p50_latency_s']}s</b> · p99 <b>{d['p99_latency_s']}s</b></p>
 <p class="prov">{prov}</p>
@@ -159,14 +165,75 @@ cost <b>${d['total_cost_usd']:.4f}</b> · p50 <b>{d['p50_latency_s']}s</b> · p9
 """
 
 
+class IncompatibleBaseline(ValueError):
+    """The baseline measured something else: other dataset, other judge, other n."""
+
+
+def _comparable(current: dict, base: dict) -> list[str]:
+    """What makes the two runs different measurements rather than two measurements.
+
+    Only fields both sides declare are compared: a baseline that records nothing (a
+    hand-written threshold file) has nothing to disagree about, and the gate still gates.
+    """
+    cj, bj = current.get("judge", {}), base.get("judge", {})
+    cd, bd = current.get("dataset", {}), base.get("dataset", {})
+    pairs = [
+        ("judge name", cj.get("name"), bj.get("name")),
+        ("judge model", cj.get("model"), bj.get("model")),
+    ]
+    out = [f"{what}: {b!r} in the baseline, {c!r} now"
+           for what, c, b in pairs if c is not None and b is not None and c != b]
+    # The dataset matches when any recorded digest matches any other: a run made before
+    # the ground-truth header line recorded the whole file, which is today's rows digest.
+    cur = {cd.get("sha256"), cd.get("sha256_rows")} - {None}
+    old = {bd.get("sha256"), bd.get("sha256_rows")} - {None}
+    if cur and old and not (cur & old):
+        out.append(f"dataset sha256: {sorted(old)[0]!r} in the baseline, {sorted(cur)[0]!r} now")
+    return out
+
+
+def _finite(value: object, what: str) -> float:
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        raise KeyError(f"{what} is not numeric (is it an audit-result.json?)")
+    if not math.isfinite(value):
+        raise ValueError(f"{what} is not finite ({value!r}); refusing to compare")
+    return float(value)
+
+
 def check_drift(current: AuditResult, baseline_path: str,
-                max_ece_drift: float = 0.02, max_acc_drop: float = 0.01) -> list[str]:
-    """CI gate: fail the build when the judge degrades vs baseline."""
+                max_ece_drift: float = 0.02, max_acc_drop: float = 0.01,
+                allow_incompatible: bool = False) -> list[str]:
+    """CI gate: fail the build when the judge degrades vs baseline.
+
+    Refuses (`IncompatibleBaseline`) when the two runs are not the same measurement —
+    other dataset, other judge or model, other n — because an ECE that moved between
+    two different datasets says nothing about the judge. `allow_incompatible` compares
+    anyway, for the deliberate case (a new dataset version, a renamed model).
+    """
     with open(baseline_path, encoding="utf-8") as f:
         base = json.load(f)
-    for key in ("ece", "accuracy"):
-        if not isinstance(base.get(key), (int, float)):
-            raise KeyError(f"baseline has no numeric '{key}' (is it an audit-result.json?)")
+    base_ece = _finite(base.get("ece"), "baseline 'ece'")
+    base_acc = _finite(base.get("accuracy"), "baseline 'accuracy'")
+    _finite(current.ece, "current 'ece'")
+    _finite(current.accuracy, "current 'accuracy'")
+
+    mismatches = _comparable(current.run or {}, base.get("run") or {})
+    if isinstance(base.get("n"), int) and base["n"] != current.n:
+        mismatches.append(f"n: {base['n']} in the baseline, {current.n} now")
+    if mismatches and not allow_incompatible:
+        raise IncompatibleBaseline(
+            "the baseline is not the same measurement — " + "; ".join(mismatches) +
+            ". Compare like with like, or pass --allow-incompatible to compare anyway.")
+
+    cur_prompt = (current.run or {}).get("judge", {}).get("prompt_sha256")
+    base_prompt = (base.get("run") or {}).get("judge", {}).get("prompt_sha256")
+    if cur_prompt and base_prompt and cur_prompt != base_prompt:
+        warnings.warn(
+            f"the judge's prompt changed since the baseline (prompt_sha256 "
+            f"{base_prompt[:12]}… → {cur_prompt[:12]}…): the numbers below compare two "
+            "different questions.", UserWarning, stacklevel=2)
+
+    base = {**base, "ece": base_ece, "accuracy": base_acc}
     failures = []
     ece_drift = current.ece - base["ece"]
     if ece_drift > max_ece_drift:

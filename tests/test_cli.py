@@ -58,6 +58,43 @@ def test_empty_baseline_is_exit_2(labels_path, tmp_path):
     assert r.returncode == 2 and "baseline" in r.stderr
 
 
+def test_outputs_are_written_atomically_and_leave_no_temp_files(labels_path, tmp_path):
+    r = run("run", str(labels_path), "--judge", "simulated", cwd=tmp_path)
+    assert r.returncode == 0, r.stderr
+    assert not list(tmp_path.glob(".judge-audit-*.tmp"))
+    # A failed run must not replace a good report with a half-written one.
+    good = (tmp_path / "audit-report.md").read_text()
+    r = run("run", "nope.jsonl", "--judge", "simulated", cwd=tmp_path)
+    assert r.returncode == 2
+    assert (tmp_path / "audit-report.md").read_text() == good
+    assert not list(tmp_path.glob(".judge-audit-*.tmp"))
+
+
+def test_check_against_another_dataset_is_exit_2(labels_path, tmp_path):
+    # A baseline measured on other rows is not a baseline: refuse rather than compare.
+    run("run", str(labels_path), "--judge", "simulated", "--json", "base.json", cwd=tmp_path)
+    base = json.loads((tmp_path / "base.json").read_text())
+    base["run"]["dataset"]["sha256_rows"] = "00" * 32
+    base["run"]["dataset"]["sha256"] = "00" * 32
+    (tmp_path / "base.json").write_text(json.dumps(base))
+    r = run("check", str(labels_path), "--judge", "simulated", "--baseline", "base.json",
+            cwd=tmp_path)
+    assert r.returncode == 2 and "not the same measurement" in r.stderr
+    r = run("check", str(labels_path), "--judge", "simulated", "--baseline", "base.json",
+            "--allow-incompatible", cwd=tmp_path)
+    assert r.returncode == 0 and "OK: no drift" in r.stdout
+
+
+def test_check_against_another_n_is_exit_2(labels_path, tmp_path):
+    run("run", str(labels_path), "--judge", "simulated", "--json", "base.json", cwd=tmp_path)
+    base = json.loads((tmp_path / "base.json").read_text())
+    base["n"] = base["n"] + 1
+    (tmp_path / "base.json").write_text(json.dumps(base))
+    r = run("check", str(labels_path), "--judge", "simulated", "--baseline", "base.json",
+            cwd=tmp_path)
+    assert r.returncode == 2 and "n:" in r.stderr
+
+
 def test_bad_jev_backend_is_exit_2(labels_path, tmp_path, monkeypatch):
     monkeypatch.setenv("JEV_BACKEND", "foo")
     r = run("run", str(labels_path), "--judge", "jev", cwd=tmp_path)
