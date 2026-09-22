@@ -48,6 +48,17 @@ JEV = {
     "router-described": "docs/runs/audit-jev-router-described.ckpt.jsonl",
 }
 ARENA = ROOT / "docs" / "runs" / "arena"
+# Runs made on a pre-registered subset of rows (`rows_subset` in the checkpoint header)
+# are not comparable with the full-dataset rows of this table and belong to
+# docs/finetuned-baseline-2026-09.md, where every judge is re-scored on the same rows.
+# collect() returns them under the "_heldout_runs" key; render() lists them in the caveats.
+# The fine-tuned slugs share a model name per dataset; label them by run so the rows
+# stay distinguishable (run 1 is the pre-registered one, the others the post-hoc amendment).
+FINETUNED_LABELS = {
+    "finetuned-deberta": "DeBERTa-v3 fine-tuned, run 1 (local)",
+    "finetuned-deberta-run2": "DeBERTa-v3 fine-tuned, run 2 (local, post hoc)",
+    "finetuned-deberta-run2-ts": "DeBERTa-v3 fine-tuned, run 2 + temperature scaling (local, post hoc)",
+}
 
 
 def ground_truth_tier(labels: str) -> GroundTruth:
@@ -127,6 +138,7 @@ def summarize(recs: list[dict], dataset: str, rows: list[dict] | None = None) ->
 
 
 def collect() -> dict:
+    heldout_runs: list[str] = []
     judges: dict[str, dict] = {"jev": {"label": "Jev (TypeSafe)", "method": "option probability",
                                        "run": {"judge": {"model": "typesafe-ai/jev"}}, "datasets": {}}}
     for ds, ckpt in JEV.items():
@@ -141,6 +153,11 @@ def collect() -> dict:
                 if not ck.exists():
                     continue
                 recs, run = records(labels, ck, q)
+                subset = run.get("rows_subset")
+                if subset:
+                    heldout_runs.append(f"{d.name}/{ds} ({subset.get('part')} of "
+                                        f"`{subset.get('split')}`, n={subset.get('n')})")
+                    continue
                 rows = load_jsonl(str(ROOT / labels))
                 if len(recs) < len(rows):
                     print(f"skip {d.name}/{ds}: {len(recs)} rows, run not complete", file=sys.stderr)
@@ -148,12 +165,13 @@ def collect() -> dict:
                 if run:
                     entry["run"] = run
                     j = run.get("judge", {})
-                    entry["label"] = j.get("model", d.name)
+                    entry["label"] = FINETUNED_LABELS.get(d.name, j.get("model", d.name))
                     entry["method"] = ("option probability" if j.get("name") == "jev"
                                        else j.get("confidence_method", "verbalized"))
                 entry["datasets"][ds] = summarize(recs, ds, rows)
             if entry["datasets"]:
                 judges[d.name] = entry
+    judges["_heldout_runs"] = heldout_runs
     return judges
 
 
@@ -174,6 +192,8 @@ def fmt(x, pct=False):
 
 
 def render(judges: dict) -> str:
+    heldout_runs = judges.get("_heldout_runs", [])
+    judges = {k: v for k, v in judges.items() if not k.startswith("_")}
     L = ["# Judge Arena — September 2026",
          "",
          "Same four datasets, every judge, every raw response committed under `docs/runs/`. " +
@@ -250,9 +270,12 @@ def render(judges: dict) -> str:
           f"follow instructions, so an injection cannot hijack it{nli_note}; returns a real " +
           "softmax confidence and was never fine-tuned on these tasks — the row that says whether a " +
           "task needed a bigger model at all |",
-          "| your own fine-tuned classifier | coming in " +
-          "[#51](https://github.com/kunko-ai-labs/judge-audit/issues/51): a DeBERTa fine-tuned on a " +
-          "pre-registered train half, scored on the held-out half next to every judge above |",
+          "| DeBERTa-v3 fine-tuned (runs 1, 2, 2 + TS) | **your own classifier**: the same encoder " +
+          "fine-tuned on the train half of a pre-registered split, scored on the other half. Run 1 " +
+          "is the pre-registered run; run 2 (to convergence) and run 2 + temperature scaling are a " +
+          "disclosed post-hoc amendment. Only its full-row adversarial run appears above; the " +
+          "held-out comparison, every judge on the same rows, is " +
+          "[finetuned-baseline-2026-09.md](finetuned-baseline-2026-09.md) |",
           "",
           "Deliberately missing from this round, one reason each:", "",
           "- **OpenJev** — needs a Codiv account not yet created.",
@@ -287,15 +310,21 @@ def render(judges: dict) -> str:
           "the numbers; that is a finding about prompts, not a fix for calibration.",
           "- Local models run through Ollama on a laptop; latency is not comparable with hosted APIs.",
           ""]
+    if heldout_runs:
+        L += ["- Runs made on a pre-registered held-out half are not in these tables (their n differs): "
+              + "; ".join(heldout_runs) + ". Every judge is re-scored on those same rows in "
+              "[finetuned-baseline-2026-09.md](finetuned-baseline-2026-09.md).",
+              ""]
     return "\n".join(L)
 
 
 def main() -> None:
     judges = collect()
     (ROOT / "docs" / "arena-2026-09.md").write_text(render(judges), encoding="utf-8")
-    (ROOT / "docs" / "arena-2026-09.json").write_text(json.dumps(judges, indent=2, ensure_ascii=False),
+    public = {k: v for k, v in judges.items() if not k.startswith("_")}
+    (ROOT / "docs" / "arena-2026-09.json").write_text(json.dumps(public, indent=2, ensure_ascii=False),
                                                        encoding="utf-8")
-    for slug, j in judges.items():
+    for slug, j in public.items():
         print(slug, {ds: (s["accuracy"], s["ece"]) for ds, s in j["datasets"].items()})
 
 

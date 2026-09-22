@@ -27,7 +27,8 @@ def test_render_states_why_these_judges_and_the_blank_column():
     md = render(judges)
     assert "## Why these judges" in md
     for name in ("Jev", "Claude Sonnet 4.5", "Gemini 3 Flash", "Llama 3.3 70B", "DeepSeek R1",
-                 "gemma4", "llama3.2", "DeBERTa", "control", "#51"):
+                 "gemma4", "llama3.2", "DeBERTa", "control", "your own classifier",
+                 "finetuned-baseline-2026-09.md"):
         assert name in md
     for missing in ("OpenJev", "GPT", "Mistral"):
         assert missing in md
