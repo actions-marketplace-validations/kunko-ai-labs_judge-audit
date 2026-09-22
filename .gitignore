@@ -10,3 +10,7 @@ docs/.frames/
 .DS_Store
 .env
 .claude/worktrees/
+
+# Local review notes, not part of the project
+*.local.md
+auditoria*.md
