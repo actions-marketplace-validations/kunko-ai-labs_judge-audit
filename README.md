@@ -66,12 +66,28 @@ Every judge below ran the same four datasets through the same harness; raw respo
 |---|---|---|---|---|---|---|---|---|---|
 | Jev (TypeSafe) | option probability | 95.5% | 0.039 | **73%** | 0.93 / 0.60 | +0.28 | 97.5% | 0/40 | $0.004 |
 | Claude Sonnet 4.5 | verbalized | 96.5% | 0.016 | **2%** | 0.96 / 0.88 | +0.03 | 95.0% | 6/40 | $0.454 |
+| Gemini 3 Flash | verbalized | 97.0% | 0.015 | **12%** | 0.98 / 0.98 | +0.02 | 98.3% | 2/40 | $0.026 |
 | Llama 3.3 70B | verbalized | 90.5% | 0.015 | **0%** | 0.90 / 0.82 | +0.06 | 86.7% | 16/40 | $0.041 |
 | DeepSeek R1 | verbalized | 80.5% | 0.127 | **0%** | 0.94 / 0.90 | +0.05 | 79.2% | 24/40 | $0.589 |
+| gemma4 e4b (local) | verbalized | 81.0% | 0.153 | **2%** | 0.96 / 0.97 | +0.01 | 77.5% | 27/40 | $0.000 |
 | llama3.2 3B (local) | verbalized | 72.5% | 0.154 | **0%** | 0.87 / 0.91 | -0.03 | 59.2% | 9/40 | $0.000 |
 | DeBERTa-v3 NLI zero-shot (local) | NLI entailment softmax over options | 59.5% | 0.125 | **8%** | 0.73 / 0.56 | +0.09 | 49.2% | 39/40 | $0.000 |
 
-**Read the zero-error coverage column.** Claude Sonnet 4.5 is slightly *more accurate* than Jev under attack and has a lower ECE — yet you could automate 2 % of its decisions with no observed error, against 73 % with Jev, because its confidence barely moves when it is wrong (0.88). A judge that says 0.60 when it is guessing is worth more than one that says 0.88. The 3B chat model is *more* confident when wrong than when right; its number is decoration. The small NLI encoder cannot be prompt-injected (it does not read instructions) but routes at coin-flip level. Chat-model confidence here is verbalized (the model writes a number); Jev's is the probability of the chosen option, not the API's `confidence` field, which is a rescaling of that probability ([analysis](https://bernoulli.app/articles/is-jev-confident)) and calibrates worse on our data (ECE 0.13 vs 0.05 on the router).
+**Read the zero-error coverage column.** Claude Sonnet 4.5 and Gemini 3 Flash are *more accurate* than Jev under attack and have a lower ECE — yet you could automate 2 % and 12 % of their decisions with no observed error, against 73 % with Jev, because their confidence barely moves when they are wrong (0.88; Gemini says 0.98 whether it is right or wrong). A judge that says 0.60 when it is guessing is worth more than one that says 0.88. The 3B chat model is *more* confident when wrong than when right; its number is decoration. The small NLI encoder cannot be prompt-injected (it does not read instructions) but routes at coin-flip level. Chat-model confidence here is verbalized (the model writes a number); Jev's is the probability of the chosen option, not the API's `confidence` field, which is a rescaling of that probability ([analysis](https://bernoulli.app/articles/is-jev-confident)) and calibrates worse on our data (ECE 0.13 vs 0.05 on the router).
+
+### Consensus is not calibration
+
+Most agent juries use *agreement* as confidence: eight judges, majority wins, vote share is the score. Reading the Arena checkpoints side by side ([docs/consensus-2026-09.md](docs/consensus-2026-09.md), no new API call) says what that score is worth. Blank answers are abstentions; a tie in the even panel is no decision (counted as not correct, and shown separately over decided rows):
+
+| dataset | 8-judge majority accuracy (ties = no decision / decided rows) | ties | best single judge | vote share when right / wrong | vote share as confidence: ECE | best declared confidence: ECE |
+|---|---|---|---|---|---|---|
+| Emails under attack | 90.0% / 95.2% | 11 | 97.0% | 0.89 / 0.68 | 0.073 | 0.015 (Gemini 3 Flash) |
+| Router, bare labels | 48.3% / 63.0% | 28 | 66.7% | 0.85 / 0.69 | 0.174 | 0.233 (Llama 70B) |
+| Router, described options | 85.8% / 96.3% | 13 | 98.3% | 0.86 / 0.66 | 0.110 | 0.012 (Gemini 3 Flash) |
+
+On the 40 hard routing tasks (bare labels) the majority is right 15 % of the time (7 ties), and the panel agrees exactly as much when it is wrong as when it is right (vote share 0.69 vs 0.69); the judges who voted with a wrong majority declared 0.92 confidence on average. An even jury with a coin-flip member did not decide 23 % of rows (28 of 120) on that prompt. And the headline depends on who sits on the jury: across the 56 possible three-judge juries, hard-task accuracy runs from **0 %** (Jev + Sonnet + llama3.2) to **92.5 %** (DeBERTa + gemma4 + Llama 70B). This is the assumption Shao (2026, [arXiv:2609.20543](https://arxiv.org/abs/2609.20543)) and Huang et al. (2026, [arXiv:2605.30653](https://arxiv.org/abs/2605.30653)) attack — LLM groups that overstate consensus by 34–44 points and converge, unanimously, on wrong answers — measured on a heterogeneous jury with the same yardstick as a single calibrated judge.
+
+**Round 2 — deliberation** ([pre-registered, then amended after an independent review and rerun](docs/jury-consensus-plan.md); [report](docs/jury-consensus.md)): each of seven judges re-voted after seeing the panel's anonymised votes. On these two prompts, deliberation amplified what the prompt contained. With bare labels, agreement on the hard tasks went from 51 % to 71 % and ties from 7 to 1 while majority accuracy stayed at 15–17.5 %; the vote share behind *wrong* majorities rose from 0.69 to 0.87, and Llama 70B, gemma4 and DeepSeek R1 dropped from 55–72.5 % to 7.5–17.5 % on those tasks by following the majority (on the hard rows, 23 of 26, 20 of 21 and 16 of 17 of their switches landed on it). With described options, deliberation helped: majority accuracy 85.8 % → 95.0 %, only 2 of 840 re-votes switched to a wrong answer, llama3.2 went from 0 to 82.5 % on the hard tasks. Of the four pre-registered predictions two held, one partly, one did not (chat models were *not* more confident when wrong after deliberating: 4 of 12 cells went up). Published as scored.
 
 ## How it works
 
