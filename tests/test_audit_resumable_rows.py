@@ -37,6 +37,52 @@ def test_rows_subset_parses_and_validates(tmp_path):
         audit_resumable.rows_subset(str(s), 4)
 
 
+def test_a_rerun_of_a_complete_checkpoint_writes_the_same_report(tmp_path):
+    """The fresh run's report reads its run time from the header it just wrote, so a
+    recompute from the finished checkpoint (what runs_report.py does) is byte-identical —
+    before #61 the fresh report said 'original run time not recorded' next to a header
+    that recorded it."""
+    ckpt = tmp_path / "c.ckpt.jsonl"
+    args = [str(LABELS), "--judge", "simulated", "--checkpoint", str(ckpt),
+            "--out", str(tmp_path / "r.md"), "--json", str(tmp_path / "r.json")]
+    assert run(args, tmp_path).returncode == 0
+    first = [(tmp_path / f).read_text() for f in ("r.md", "r.json")]
+    header = json.loads(ckpt.read_text().splitlines()[0])["run"]
+    result = json.loads(first[1])
+    assert result["run"]["timestamp_utc"] == header["timestamp_utc"]
+    assert "note" not in result["run"] and "recomputed_utc" not in result["run"]
+    assert result["accuracy_ci"] is not None and first[0].startswith("> ⚠️ **SIMULATED")
+    p = run(args, tmp_path)
+    assert p.returncode == 0 and "already done" in p.stdout
+    assert [(tmp_path / f).read_text() for f in ("r.md", "r.json")] == first
+
+
+def test_a_recompute_names_the_judge_the_checkpoint_recorded(tmp_path):
+    """The banner and judge name of a recompute come from the checkpoint header, not the
+    --judge argument: a simulated checkpoint stays SIMULATED whatever the CLI says."""
+    ckpt = tmp_path / "c.ckpt.jsonl"
+    out = ["--checkpoint", str(ckpt), "--out", str(tmp_path / "r.md"),
+           "--json", str(tmp_path / "r.json")]
+    assert run([str(LABELS), "--judge", "simulated", *out], tmp_path).returncode == 0
+    for other in ("llm", "jev"):
+        p = run([str(LABELS), "--judge", other, *out], tmp_path)
+        assert p.returncode == 0 and "already done" in p.stdout, p.stderr
+        md = (tmp_path / "r.md").read_text()
+        assert md.startswith("> ⚠️ **SIMULATED") and "REAL VENDOR AUDIT" not in md
+        assert json.loads((tmp_path / "r.json").read_text())["judge"] == "simulated"
+
+
+def test_an_incomplete_checkpoint_is_not_resumed_by_another_judge(tmp_path):
+    """Rows answered by one judge and rows answered by another are not one audit."""
+    ckpt = tmp_path / "c.ckpt.jsonl"
+    header = {"idx": -1, "run": {"judge": {"name": "llm:some-model"}}}
+    ckpt.write_text(json.dumps(header) + "\n", encoding="utf-8")
+    p = run([str(LABELS), "--judge", "simulated", "--checkpoint", str(ckpt),
+             "--out", str(tmp_path / "r.md"), "--json", str(tmp_path / "r.json")], tmp_path)
+    assert p.returncode != 0 and "was started by judge 'llm'" in p.stderr
+    assert ckpt.read_text(encoding="utf-8") == json.dumps(header) + "\n"  # nothing appended
+
+
 def test_heldout_run_judges_only_the_subset_and_resumes(tmp_path):
     ckpt = tmp_path / "email-clean.ckpt.jsonl"
     args = [str(LABELS), "--judge", "simulated", "--checkpoint", str(ckpt),

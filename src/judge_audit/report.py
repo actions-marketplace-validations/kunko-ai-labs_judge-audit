@@ -95,6 +95,25 @@ def provenance_lines(run: dict) -> list[str]:
     return lines
 
 
+def regeneration_lines(d: dict) -> list[str]:
+    """When and by what a committed report was rebuilt — beside the run, never inside it."""
+    g = d.get("regenerated")
+    if not g:
+        return []
+    return [f"_regenerated {g.get('utc')} from `{g.get('checkpoint')}` by "
+            f"`{g.get('script')}` · judge-audit {g.get('judge_audit_version')}_"]
+
+
+def ground_truth_source(d: dict) -> dict:
+    """The run block, or — when the run predates tier headers — the run block plus the
+    tier the regeneration read from the labels file, so an old run is not shown as GT-0."""
+    run = d.get("run", {}) or {}
+    gt = (d.get("regenerated") or {}).get("ground_truth")
+    if gt and not (run.get("dataset") or {}).get("ground_truth"):
+        return {**run, "dataset": {**(run.get("dataset") or {}), "ground_truth": gt}}
+    return run
+
+
 def ground_truth_line(run: dict) -> str:
     """`Ground truth: GT-1 constructed — …` from `run.dataset.ground_truth`; GT-0 when absent.
 
@@ -115,8 +134,9 @@ def render_markdown(result: AuditResult) -> str:
         f"· cost **${d['total_cost_usd']:.4f}** · p50 **{d['p50_latency_s']}s** · p99 **{d['p99_latency_s']}s**",
         "",
         *provenance_lines(d.get("run", {})),
+        *regeneration_lines(d),
         "",
-        f"**{ground_truth_line(d.get('run', {}))}**",
+        f"**{ground_truth_line(ground_truth_source(d))}**",
         *ci_lines(d),
         "",
         "## Can I automate this?",
@@ -131,8 +151,10 @@ def render_markdown(result: AuditResult) -> str:
         "| coverage | accuracy | min confidence | n |",
         "|---|---|---|---|",
     ]
-    for row in d["accuracy_coverage"][::4]:  # every 5%
-        lines.append(f"| {row['coverage']:.0%} | {row['accuracy']:.1%} | "
+    # Every point: the curve already has one per real threshold (at most 20), and
+    # sampling it would drop thresholds. One decimal, so 93.5 % is not printed as 94 %.
+    for row in d["accuracy_coverage"]:
+        lines.append(f"| {row['coverage']:.1%} | {row['accuracy']:.1%} | "
                      f"{row['min_confidence']:.2f} | {row['n']} |")
     lines += ["", "## Calibration (reliability bins)", "",
               "| confidence bin | avg confidence | accuracy | n |",
@@ -174,13 +196,14 @@ def render_html(result: AuditResult, tag: str = "") -> str:
     # judge's tag — so it is escaped before it reaches the page, not trusted as markup.
     banner = f'<div class="banner">⚠️ {html.escape(tag)}</div>' if tag else ""
     prov = "<br>".join(html.escape(line.strip("_"))
-                       for line in provenance_lines(d.get("run", {})))
-    gt = html.escape(ground_truth_line(d.get("run", {})))
+                       for line in [*provenance_lines(d.get("run", {})),
+                                    *regeneration_lines(d)])
+    gt = html.escape(ground_truth_line(ground_truth_source(d)))
     judge = html.escape(str(d["judge"]))
     curve_rows = "".join(
-        f"<tr><td>{r['coverage']:.0%}</td><td>{r['accuracy']:.1%}</td>"
+        f"<tr><td>{r['coverage']:.1%}</td><td>{r['accuracy']:.1%}</td>"
         f"<td>{r['min_confidence']:.2f}</td><td>{r['n']}</td></tr>"
-        for r in d["accuracy_coverage"][::2])
+        for r in d["accuracy_coverage"])
     bin_rows = "".join(
         f"<tr><td>{b['bin']}</td><td>{b['avg_confidence']:.3f}</td>"
         f"<td>{b['accuracy']:.1%}</td><td>{b['n']}</td></tr>"
