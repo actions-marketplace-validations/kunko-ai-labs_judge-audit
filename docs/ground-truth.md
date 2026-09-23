@@ -30,6 +30,45 @@ by the generator, email categories are synthetic and seeded, and downstream task
 quality (does the cheap model really solve the "easy" tasks?) is not measured.
 Their caveats say so in every report that uses them.
 
+## What each tier lets you claim
+
+The same accuracy number is evidence of different things depending on the tier. This
+table is what a report is allowed to say out loud about a judge, given the tier of the
+labels it was measured against — not a ranking of the tiers themselves.
+
+| Tier | Calibration stress test | Comparison between judges on this data | Evidence about production behaviour |
+|---|---|---|---|
+| GT-0 unknown | ✗ | ✗ | ✗ |
+| GT-1 constructed | ✓ | ✓ | ✗ |
+| GT-2 synthetic, validated | ✓ | ✓ | ✗ |
+| GT-3 human-annotated | with caveats (label noise) | with caveats (label noise) | with caveats |
+| GT-4 expert consensus | ✓ | ✓ | with caveats |
+| GT-5 empirically validated | ✓ | ✓ | with caveats (only if items are sampled from production) |
+| GT-6 production outcome | ✓ | ✓ | ✓ |
+
+**GT-0** supports no claim at all — an undeclared provenance means the accuracy carries
+no known evidential weight, full stop.
+
+**Calibration and comparison need labels that are right for these items**, not items
+that look like production. GT-1 labels are right by construction and GT-2 labels were
+checked, so a judge that is well calibrated, or better calibrated than another, on them
+really is — on those items. A GT-3 label is one annotator's call, and an unmeasured share
+of such labels is wrong. A wrong label moves the numbers even for a perfectly calibrated
+judge: ten answers at confidence 0.9, nine of them right, have ECE 0.000 against reality;
+mislabel one of the nine right rows and ECE against the labels is 0.100. The same noise
+blurs a comparison, because a judge is penalised for agreeing with the truth where the
+label is wrong. GT-4 measures its annotators' agreement, so the size of that residual
+noise is known and can be reported next to the number.
+
+**Production behaviour needs items that come from production.** GT-1 and GT-2 items are
+synthetic, so neither says anything about how the judge behaves on real traffic, however
+good its labels. GT-3 and GT-4 items are real, but they are evidence about production only
+if they were drawn from the deployment's own traffic, and GT-3 carries the label noise
+above. GT-5 checks every label against an independent measurement, which makes the labels
+strong but says nothing about where the items came from: it is evidence about production
+only when the items were sampled from production. Only GT-6 — what actually happened
+downstream of real production items — supports the claim without a caveat.
+
 ## Declaring the tier: the dataset header line
 
 A labels JSONL declares its provenance with **one header line as its first line**.
