@@ -33,19 +33,83 @@ from judge_audit.metrics.calibration import (  # noqa: E402
     zero_error_coverage,
 )
 from judge_audit.report import interval_of, with_interval_notes  # noqa: E402
-from judge_audit.runner import is_correct, load_jsonl  # noqa: E402
+from judge_audit.runner import is_correct, load_jsonl, sha256_of  # noqa: E402
 
 JURY_SIZE = 3
 PANEL = ROOT / "docs" / "runs" / "jury" / "panel.json"        # frozen panel, judge order
 ARENA_JSON = ROOT / "docs" / "arena-2026-09.json"             # cost and latency per judge
 
 
+# Why a judge with a complete run is not on the jury. It is still listed, on its own, in the
+# per-judge declared-confidence table; it never votes and never enters an error-correlation
+# matrix, a jury or a panel statistic. A fine-tuned judge gets a data-driven reason instead
+# (`not_a_juror`): what it was trained on and how many of these rows contain a training text.
+OUTSIDE_PANEL = "not a juror: outside the frozen panel"
+TRAINING_UNVERIFIABLE = ("not a juror: fine-tuned, and its training rows cannot be checked "
+                         "against this dataset (split file missing or changed)")
+
+
 def frozen_panel(votes: dict[str, list[dict]]) -> list[str]:
-    """Judges of the frozen panel (docs/runs/jury/panel.json) that have a complete run,
-    in the panel's order; every judge with a run when no panel file exists."""
-    if PANEL.exists():
-        return [j for j in json.loads(PANEL.read_text(encoding="utf-8"))["panel"] if j in votes]
-    return list(votes)
+    """The frozen panel (docs/runs/jury/panel.json), in the panel's order.
+
+    The file is required — a missing panel does not mean everyone votes — and so is a
+    complete run of every member on the dataset: a member that is missing raises instead of
+    leaving a smaller jury behind under the same name ("8-judge majority"). No dataset is
+    exempt today; one that legitimately lacks a judge needs its own committed panel."""
+    panel = json.loads(PANEL.read_text(encoding="utf-8"))["panel"]
+    missing = [j for j in panel if j not in votes]
+    if missing:
+        raise ValueError(f"frozen panel member(s) without a complete run: {', '.join(missing)}")
+    return panel
+
+
+def jury_votes(dataset: str) -> tuple[dict[str, list[dict]], list[dict]]:
+    """`votes_of` restricted to the frozen panel: the only judges that vote."""
+    votes, rows = votes_of(dataset)
+    return {j: votes[j] for j in frozen_panel(votes)}, rows
+
+
+def checkpoint_of(dataset: str, slug: str) -> Path:
+    """The raw checkpoint a judge's votes come from (Jev's published audit, or the Arena)."""
+    return ROOT / JEV[dataset] if slug == "jev" else ARENA / slug / f"{dataset}.ckpt.jsonl"
+
+
+def run_header(ckpt: Path) -> dict:
+    """The checkpoint's run header (`idx` -1), or {} when it has none (Jev's audits)."""
+    for line in ckpt.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            rec = json.loads(line)
+            if rec.get("idx", 0) < 0:
+                return rec.get("run", {})
+    return {}
+
+
+def not_a_juror(dataset: str, slug: str) -> dict:
+    """Why a judge with a complete run on this dataset sits outside the jury.
+
+    A judge whose header declares a training split (the fine-tuned classifier runs) is
+    checked against the data: the split file must still hash to what the header recorded,
+    and the reason states which dataset's train half it learnt and how many rows here
+    contain one of those texts (verbatim, as in `scripts/heldout_report.py`). A header-less
+    checkpoint, or one without a training split, is simply outside the frozen panel."""
+    judge = run_header(checkpoint_of(dataset, slug)).get("judge", {})
+    split = judge.get("split") or {}
+    if not judge.get("train_rows_sha256") and not split:
+        return {"not_a_juror": OUTSIDE_PANEL}
+    path = ROOT / split.get("path", "")
+    if not split.get("path") or not path.is_file() or sha256_of(str(path)) != split.get("sha256"):
+        return {"not_a_juror": TRAINING_UNVERIFIABLE}
+    spec = json.loads(path.read_text(encoding="utf-8"))
+    source = load_jsonl(str(ROOT / spec["labels"]))
+    train = {source[i]["state"] for i in spec["train"]}
+    rows = load_jsonl(str(ROOT / DATASETS[dataset][0]))
+    k = sum(1 for r in rows if r["state"] in train or any(t in r["state"] for t in train))
+    trained_on = next((ds for ds, (labels, _) in DATASETS.items() if labels == spec["labels"]),
+                      spec["labels"])
+    return {"not_a_juror": f"not a juror: fine-tuned on half of {trained_on}; {k} of these "
+                           f"{len(rows)} rows contain a training text",
+            "trained_on": trained_on, "rows_with_training_text": k,
+            "model_family": f"{judge.get('backbone', '?')} fine-tuned on {trained_on}"}
 
 
 def arena_costs(dataset: str) -> dict[str, dict]:
@@ -335,40 +399,50 @@ def jury_sensitivity(votes: dict[str, list[dict]], rows: list[dict], question: s
     }
 
 
+def collect_dataset(ds: str) -> dict:
+    """Every statistic of one dataset. Only the frozen panel votes (`jury_votes`); a judge
+    outside it with a complete run appears in the declared-confidence table alone, labelled
+    with `not_a_juror`."""
+    _, q = DATASETS[ds]
+    everyone, rows = votes_of(ds)
+    votes = {j: everyone[j] for j in frozen_panel(everyone)}
+    entry = {"panel": panel_stats(votes, rows, q), "subsets": {}}
+    if ds.startswith("router"):
+        groups = {
+            "easy": [i for i, r in enumerate(rows) if r["_meta"].get("difficulty") == "easy"
+                     and not r["_meta"].get("adversarial")],
+            "hard": [i for i, r in enumerate(rows) if r["_meta"].get("difficulty") == "hard"
+                     and not r["_meta"].get("adversarial")],
+            "adversarial": [i for i, r in enumerate(rows) if r["_meta"].get("adversarial")],
+        }
+    else:
+        groups = {}
+        for i, r in enumerate(rows):
+            groups.setdefault(r["_meta"].get("attack", "clean"), []).append(i)
+    for name, idxs in groups.items():
+        entry["subsets"][name] = panel_stats(votes, rows, q, idxs)
+        if ds.startswith("router") and name == "hard":
+            entry["subsets"][name]["jury_sensitivity"] = jury_sensitivity(votes, rows, q, idxs)
+            entry["subsets"][name]["jury_composition"] = jury_composition(
+                votes, rows, q, idxs, list(votes), arena_costs(ds))
+    entry["error_correlation"] = error_correlation(votes, rows, q)
+    # Per-judge declared confidence vs the panel's vote share, same yardstick. Jurors first,
+    # in the panel's order; then any judge outside the panel, individually and labelled.
+    entry["declared_confidence"] = {}
+    for j in list(votes) + [j for j in everyone if j not in votes]:
+        recs = everyone[j]
+        conf, ok = [r["confidence"] for r in recs], [r["correct"] for r in recs]
+        entry["declared_confidence"][j] = {
+            "ece": round(expected_calibration_error(conf, ok), 4),
+            "zero_error_coverage": zero_error_coverage(conf, ok)["coverage"],
+            "accuracy": round(statistics.mean(ok), 4),
+            "juror": j in votes,
+            **({} if j in votes else not_a_juror(ds, j))}
+    return entry
+
+
 def collect() -> dict:
-    out = {}
-    for ds, (_, q) in DATASETS.items():
-        votes, rows = votes_of(ds)
-        entry = {"panel": panel_stats(votes, rows, q), "subsets": {}}
-        if ds.startswith("router"):
-            groups = {
-                "easy": [i for i, r in enumerate(rows) if r["_meta"].get("difficulty") == "easy"
-                         and not r["_meta"].get("adversarial")],
-                "hard": [i for i, r in enumerate(rows) if r["_meta"].get("difficulty") == "hard"
-                         and not r["_meta"].get("adversarial")],
-                "adversarial": [i for i, r in enumerate(rows) if r["_meta"].get("adversarial")],
-            }
-        else:
-            groups = {}
-            for i, r in enumerate(rows):
-                groups.setdefault(r["_meta"].get("attack", "clean"), []).append(i)
-        for name, idxs in groups.items():
-            entry["subsets"][name] = panel_stats(votes, rows, q, idxs)
-            if ds.startswith("router") and name == "hard":
-                entry["subsets"][name]["jury_sensitivity"] = jury_sensitivity(votes, rows, q, idxs)
-                entry["subsets"][name]["jury_composition"] = jury_composition(
-                    votes, rows, q, idxs, frozen_panel(votes), arena_costs(ds))
-        entry["error_correlation"] = error_correlation(votes, rows, q)
-        # Per-judge declared confidence vs the panel's vote share, same yardstick.
-        entry["declared_confidence"] = {
-            j: {"ece": round(expected_calibration_error(
-                    [r["confidence"] for r in recs], [r["correct"] for r in recs]), 4),
-                "zero_error_coverage": zero_error_coverage(
-                    [r["confidence"] for r in recs], [r["correct"] for r in recs])["coverage"],
-                "accuracy": round(statistics.mean(r["correct"] for r in recs), 4)}
-            for j, recs in votes.items()}
-        out[ds] = entry
-    return out
+    return {ds: collect_dataset(ds) for ds in DATASETS}
 
 
 def pct(x):
@@ -495,9 +569,21 @@ def render(data: dict) -> str:
     for ds, title in names.items():
         e = data[ds]
         p = e["panel"]
+        outside = [j for j, d in e["declared_confidence"].items() if not d.get("juror", True)]
+        families: dict[str, list[str]] = {}
+        for j in outside:
+            if e["declared_confidence"][j].get("model_family"):
+                families.setdefault(e["declared_confidence"][j]["model_family"], []).append(j)
+        family_text = "".join(
+            f" {', '.join(js)} are one model family ({fam}), entered {len(js)} times: not " +
+            f"{len(js)} independent jurors." for fam, js in families.items() if len(js) > 1)
         L += [f"## {title}", "",
-              f"Panel: {len(p['judges'])} judges ({', '.join(p['judges'])}). Majority vote among " +
-              "those who answered; a tie is no decision.", "",
+              f"Panel: {len(p['judges'])} judges ({', '.join(p['judges'])}), the frozen panel of " +
+              "`docs/runs/jury/panel.json`. Majority vote among those who answered; a tie is no " +
+              "decision." +
+              (f" Also run on this dataset but not on the jury: {', '.join(outside)} — they never " +
+               "vote and appear only in the declared-confidence table, each with the reason." +
+               family_text if outside else ""), "",
               "| subset | n | pairwise agreement | unanimous (wrong) | ties | abstentions | " +
               "majority accuracy (all / decided) | best single judge | vote share right / wrong | " +
               "conf of the wrong majority |",
@@ -518,7 +604,9 @@ def render(data: dict) -> str:
               f"{interval_of(p, 'majority_accuracy_ci', pct=True)} | {num(p['vote_share_ece'])} | " +
               f"{pct(p['vote_share_zero_error_coverage'])} |"]
         for j, d in e["declared_confidence"].items():
-            L.append(f"| {j} (declared) | {pct(d['accuracy'])} | {d['ece']:.3f} | {pct(d['zero_error_coverage'])} |")
+            label = f"{j} (declared" + (f"; {d['not_a_juror']})" if "not_a_juror" in d else ")")
+            L.append(f"| {label} | {pct(d['accuracy'])} | {d['ece']:.3f} | " +
+                     f"{pct(d['zero_error_coverage'])} |")
         hard = e["subsets"].get("hard", {}).get("jury_sensitivity")
         if hard:
             uw = hard["unanimous_wrong_max"]
@@ -578,6 +666,16 @@ def render(data: dict) -> str:
           "router always favoured `route_easy`; changed and disclosed in `jury-consensus-plan.md`.",
           "- Judges differ in cost, size and confidence method; the panel is heterogeneous on purpose " +
           "(same-model juries are the documented failure mode — Smit et al., ICML 2024).",
+          "- **Only the frozen panel votes** (`docs/runs/jury/panel.json`) on every dataset, in " +
+          "every panel statistic, subset, jury and error-correlation matrix; a panel member " +
+          "without a complete run is an error, not a smaller jury. A judge added to the Arena " +
+          "later is listed in the declared-confidence table with the reason it is not a juror. " +
+          "The three fine-tuned DeBERTa runs are one model family, fine-tuned on half of the " +
+          "clean emails from the same generator (`docs/finetuned-baseline-2026-09.md`; the number " +
+          "of rows here that contain a training text is given next to each): on the emails under " +
+          "attack they would be one model entered three times, not three independent jurors. An " +
+          "earlier version let them vote there; corrected in v0.4.0 (#65, before → after in the " +
+          "CHANGELOG).",
           "- Round 1 only: nobody saw anybody else's vote. Round 2 (deliberation) is pre-registered in " +
           "`docs/jury-consensus-plan.md` and reported in `docs/jury-consensus.md` once run.", ""]
     return "\n".join(with_interval_notes(L))
