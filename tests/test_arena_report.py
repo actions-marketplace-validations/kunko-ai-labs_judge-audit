@@ -18,7 +18,17 @@ from arena_report import (  # noqa: E402
 
 def rec(decision, confidence, expected="b"):
     return {"decision": decision, "confidence": confidence, "correct": decision == expected,
+            "parse_status": "parsed" if decision.strip() else "no_answer",
             "latency_s": 1.0, "cost_usd": 0.0, "meta": {}}
+
+
+def test_unknown_confidence_is_excluded_from_arena_calibration():
+    s = summarize([rec("b", .9), rec("", None)], "email-clean")
+    assert s["n"] == 2 and s["accuracy"] == 0.5
+    assert s["confidence"] == {"known": 1, "total": 2}
+    assert s["ece"] == 0.1 and s["no_answer"] == 1
+    assert "known 1/2" in render({"j": {"label": "J", "method": "verbalized",
+                                                "datasets": {"email-clean": s}}})
 
 
 def test_summarize_counts_blank_answers_separately():
@@ -42,7 +52,7 @@ def test_render_states_why_these_judges_and_the_blank_column():
     assert "cannot hijack it;" in md          # no NLI row here: no degradation figures rendered
     assert "| no answer |" in md
     # two rows, one right: the bootstrap can land on 0, 50 or 100 % — the interval says so
-    assert "| Jev | option probability | 50.0% [0.0, 100.0] |" in md and "| 1 |" in md
+    assert "| Jev | option probability (known 2/2) | 50.0% [0.0, 100.0] |" in md and "| 1 |" in md
 
 
 def test_render_states_the_controls_degradation_from_its_own_numbers():
@@ -138,3 +148,19 @@ def test_a_stable_ranking_and_identical_judges_are_not_a_flip():
 def test_ordinal():
     assert [ordinal(k) for k in (1, 2, 3, 4, 11, 12, 13, 21, 22, 101, 111)] == [
         "1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd", "101st", "111th"]
+
+
+def test_a_judge_with_no_known_confidence_renders_and_is_left_out_of_the_ranks():
+    known = [rec("b", .9), rec("a", .6), rec("b", .8)]
+    blank = [rec("", None), rec("", None), rec("", None)]
+    other = [rec("b", .7), rec("b", .95), rec("a", .9)]
+    judges = {k: {"label": k.upper(), "method": "verbalized",
+                  "datasets": {"router-bare": summarize(recs, "router-bare")}}
+              for k, recs in (("a", known), ("b", other), ("z", blank))}
+    z = judges["z"]["datasets"]["router-bare"]
+    assert z["confidence"] == {"known": 0, "total": 3} and z["ece"] is None
+    assert set(calibration_ranks(judges, "router-bare")) == {"a", "b"}
+    reversals(judges, "router-bare")
+    ranking_sentence(judges)
+    md = render(judges)
+    assert "known 0/3" in md
