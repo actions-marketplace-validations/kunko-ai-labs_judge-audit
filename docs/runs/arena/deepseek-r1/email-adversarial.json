@@ -1,32 +1,38 @@
 {
   "judge": "llm",
   "n": 200,
-  "accuracy": 0.765,
-  "ece": 0.074,
+  "accuracy": 0.805,
+  "confidence": {
+    "known": 200,
+    "total": 200
+  },
+  "ece": 0.1265,
+  "ece_equal_mass": 0.134,
+  "brier": 0.1693,
   "reliability_bins": [
     {
       "bin": "0.0-0.1",
-      "avg_confidence": 0.0,
-      "accuracy": 0.0,
-      "n": 19
-    },
-    {
-      "bin": "0.1-0.2",
       "avg_confidence": null,
       "accuracy": null,
       "n": 0
     },
     {
+      "bin": "0.1-0.2",
+      "avg_confidence": 0.1,
+      "accuracy": 0.0,
+      "n": 1
+    },
+    {
       "bin": "0.2-0.3",
       "avg_confidence": 0.2,
       "accuracy": 0.0,
-      "n": 2
+      "n": 1
     },
     {
       "bin": "0.3-0.4",
-      "avg_confidence": 0.3,
-      "accuracy": 0.0,
-      "n": 2
+      "avg_confidence": null,
+      "accuracy": null,
+      "n": 0
     },
     {
       "bin": "0.4-0.5",
@@ -48,155 +54,66 @@
     },
     {
       "bin": "0.7-0.8",
-      "avg_confidence": null,
-      "accuracy": null,
-      "n": 0
+      "avg_confidence": 0.7,
+      "accuracy": 0.25,
+      "n": 4
     },
     {
       "bin": "0.8-0.9",
       "avg_confidence": 0.8,
-      "accuracy": 0.6,
-      "n": 10
+      "accuracy": 0.6667,
+      "n": 6
     },
     {
       "bin": "0.9-1.0",
-      "avg_confidence": 0.951,
-      "accuracy": 0.8802,
-      "n": 167
+      "avg_confidence": 0.9489,
+      "accuracy": 0.8298,
+      "n": 188
     }
   ],
   "accuracy_coverage": [
     {
-      "coverage": 0.05,
-      "accuracy": 0.3,
-      "n": 10,
+      "coverage": 0.1,
+      "accuracy": 0.2,
+      "n": 20,
       "min_confidence": 1.0
     },
     {
-      "coverage": 0.1,
-      "accuracy": 0.4,
-      "n": 20,
-      "min_confidence": 0.99
-    },
-    {
-      "coverage": 0.15,
-      "accuracy": 0.5333,
-      "n": 30,
+      "coverage": 0.805,
+      "accuracy": 0.8137,
+      "n": 161,
       "min_confidence": 0.95
     },
     {
-      "coverage": 0.2,
-      "accuracy": 0.625,
-      "n": 40,
-      "min_confidence": 0.95
-    },
-    {
-      "coverage": 0.25,
-      "accuracy": 0.7,
-      "n": 50,
-      "min_confidence": 0.95
-    },
-    {
-      "coverage": 0.3,
-      "accuracy": 0.7333,
-      "n": 60,
-      "min_confidence": 0.95
-    },
-    {
-      "coverage": 0.35,
-      "accuracy": 0.7571,
-      "n": 70,
-      "min_confidence": 0.95
-    },
-    {
-      "coverage": 0.4,
-      "accuracy": 0.7875,
-      "n": 80,
-      "min_confidence": 0.95
-    },
-    {
-      "coverage": 0.45,
-      "accuracy": 0.8111,
-      "n": 90,
-      "min_confidence": 0.95
-    },
-    {
-      "coverage": 0.5,
-      "accuracy": 0.82,
-      "n": 100,
-      "min_confidence": 0.95
-    },
-    {
-      "coverage": 0.55,
-      "accuracy": 0.8273,
-      "n": 110,
-      "min_confidence": 0.95
-    },
-    {
-      "coverage": 0.6,
-      "accuracy": 0.8417,
-      "n": 120,
-      "min_confidence": 0.95
-    },
-    {
-      "coverage": 0.65,
-      "accuracy": 0.8462,
-      "n": 130,
-      "min_confidence": 0.95
-    },
-    {
-      "coverage": 0.7,
-      "accuracy": 0.8571,
-      "n": 140,
-      "min_confidence": 0.95
-    },
-    {
-      "coverage": 0.75,
-      "accuracy": 0.8667,
-      "n": 150,
+      "coverage": 0.94,
+      "accuracy": 0.8298,
+      "n": 188,
       "min_confidence": 0.9
     },
     {
-      "coverage": 0.8,
-      "accuracy": 0.875,
-      "n": 160,
-      "min_confidence": 0.9
-    },
-    {
-      "coverage": 0.85,
-      "accuracy": 0.8824,
-      "n": 170,
+      "coverage": 0.97,
+      "accuracy": 0.8247,
+      "n": 194,
       "min_confidence": 0.8
     },
     {
-      "coverage": 0.9,
-      "accuracy": 0.85,
-      "n": 180,
-      "min_confidence": 0.2
-    },
-    {
-      "coverage": 0.95,
-      "accuracy": 0.8053,
-      "n": 190,
-      "min_confidence": 0.0
-    },
-    {
       "coverage": 1.0,
-      "accuracy": 0.765,
+      "accuracy": 0.805,
       "n": 200,
-      "min_confidence": 0.0
+      "min_confidence": 0.1
     }
   ],
   "zero_error_coverage": {
-    "coverage": 0.005,
-    "n": 1,
-    "threshold": 1.0
+    "coverage": 0.0,
+    "n": 0,
+    "threshold": null
   },
-  "total_cost_usd": 0.503165,
-  "p50_latency_s": 3.23,
-  "p99_latency_s": 12.755,
+  "total_cost_usd": 0.588998,
+  "p50_latency_s": 3.101,
+  "p99_latency_s": 27.752,
   "run": {
-    "judge_audit_version": "0.3.1",
+    "timestamp_utc": "2026-09-21T14:55:24+00:00",
+    "judge_audit_version": "0.3.2",
     "judge": {
       "name": "llm:deepseek-r1",
       "provider": "hosted-api",
@@ -205,16 +122,68 @@
       "prices_usd_per_mtok": [
         1.35,
         5.4
-      ]
+      ],
+      "max_tokens": 4096
     },
     "python": "3.12.8",
     "dataset": {
       "path": "examples/email-routing-adversarial/labels.jsonl",
       "sha256": "74741868f533bf0c17b622cfbae43b917e52a964cd1c9e51fb9b74905c802e24",
-      "rows": 200
+      "rows": 200,
+      "ground_truth": {
+        "tier": "GT-1",
+        "label": "constructed",
+        "meaning": "labels are true by construction of a seeded generator; suitable for calibration stress testing, not evidence of real-world accuracy",
+        "validation": "not_validated",
+        "purpose": [
+          "robustness under prompt injection, homoglyphs, ambiguity, PII and social engineering",
+          "does confidence drop when the judge is attacked?"
+        ],
+        "caveats": [
+          "email categories are synthetic and seeded: 60 clean controls plus 140 attacked rows built from the same templates",
+          "the label is the category of the underlying clean email by design; _meta.target is what the attacker wanted",
+          "measures resistance to attacks on synthetic mail, not accuracy on real mail"
+        ]
+      }
     },
-    "recomputed_utc": "2026-09-20T19:21:51+00:00",
-    "note": "original run time not recorded in this checkpoint",
     "checkpoint": "docs/runs/arena/deepseek-r1/email-adversarial.ckpt.jsonl"
+  },
+  "accuracy_ci": [
+    0.7476,
+    0.8564
+  ],
+  "accuracy_ci_method": "bootstrap",
+  "ece_ci": [
+    0.0764,
+    0.1839
+  ],
+  "ece_ci_method": "bootstrap",
+  "ece_equal_mass_ci": [
+    0.0847,
+    0.1929
+  ],
+  "ece_equal_mass_ci_method": "bootstrap",
+  "brier_ci": [
+    0.1219,
+    0.2189
+  ],
+  "brier_ci_method": "bootstrap",
+  "zero_error_coverage_ci": [
+    0.0,
+    0.0183
+  ],
+  "zero_error_coverage_ci_method": "clopper-pearson",
+  "bootstrap": {
+    "method": "percentile bootstrap over distinct dataset texts (cluster)",
+    "level": 0.95,
+    "n_boot": 2000,
+    "seed": 0
+  },
+  "regenerated": {
+    "utc": "2026-09-23T18:32:04+00:00",
+    "judge_audit_version": "0.4.0",
+    "script": "scripts/runs_report.py",
+    "checkpoint": "docs/runs/arena/deepseek-r1/email-adversarial.ckpt.jsonl",
+    "labels": "examples/email-routing-adversarial/labels.jsonl"
   }
 }

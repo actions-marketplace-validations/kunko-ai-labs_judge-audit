@@ -35,29 +35,82 @@ def test_extract_json_ignores_trailing_garbage():
 def test_extract_json_tolerates_fences_and_prose():
     assert _extract_json('```json\n{"a": 1}\n```') == {"a": 1}
     assert _extract_json('Sure! {"a": 2} hope this helps') == {"a": 2}
-    with pytest.raises(json.JSONDecodeError):
+    with pytest.raises(ValueError):
         _extract_json("no json here")
 
 
-def test_decide_normalises_option_case_and_clamps_confidence(monkeypatch):
+def test_decide_normalises_option_case_and_rejects_out_of_range_confidence(monkeypatch):
     j = make(monkeypatch, '{"answers": {"category": {"decision": "SPAM", "confidence": 1.7}}}')
     (out,) = j.decide("x", [Q])
-    assert out.decision == "spam" and out.confidence == 1.0
+    assert out.decision == "spam" and out.confidence is None
+    assert out.parse_status == "no_confidence"
     assert out.cost_usd == pytest.approx((100 * 0.25 + 20 * 2.0) / 1e6)
     assert out.raw["priced"] is True and "text" in out.raw
 
 
-def test_unparseable_reply_is_wrong_with_zero_confidence(monkeypatch):
+@pytest.mark.parametrize(
+    "answer",
+    [
+        {"decision": "spam"},
+        {"decision": "spam", "confidence": "not-a-number"},
+        {"decision": "spam", "confidence": "NaN"},
+        {"decision": "spam", "confidence": float("nan")},
+        {"decision": "spam", "confidence": float("inf")},
+        {"decision": "spam", "confidence": -0.01},
+        {"decision": "spam", "confidence": 1.01},
+        {"decision": "spam", "confidence": True},   # float(True) would impute 1.0
+        {"decision": "spam", "confidence": False},
+    ],
+)
+def test_missing_or_invalid_confidence_stays_unknown(monkeypatch, answer):
+    j = make(monkeypatch, json.dumps({"answers": {"category": answer}}))
+    (out,) = j.decide("x", [Q])
+    assert out.decision == "spam"
+    assert out.confidence is None
+    assert out.parse_status == "no_confidence"
+
+
+def test_unparseable_reply_is_wrong_with_unknown_confidence(monkeypatch):
     j = make(monkeypatch, "I cannot decide.")
     (out,) = j.decide("x", [Q])
-    assert out.decision == "" and out.confidence == 0.0
+    assert out.decision == "" and out.confidence is None
+    assert out.parse_status == "no_answer"
 
 
-def test_unknown_model_reports_zero_cost_and_says_so(monkeypatch):
+def test_answer_without_decision_has_unknown_confidence(monkeypatch):
+    # llama3.2 wrote this in jury round 2: a confidence that belongs to no decision
+    reply = '{"answers": {"category": {"spam": "order", "confidence": 0.0}}}'
+    (out,) = make(monkeypatch, reply).decide("x", [Q])
+    assert out.decision == "" and out.confidence is None
+    assert out.parse_status == "no_answer"
+
+
+def test_decision_outside_the_options_is_a_wrong_answer_with_its_confidence(monkeypatch):
+    reply = '{"answers": {"category": {"decision": "invoice", "confidence": 0.8}}}'
+    (out,) = make(monkeypatch, reply).decide("x", [Q])
+    assert out.decision == "invoice" and out.confidence == 0.8
+    assert out.parse_status == "parsed"
+
+
+def test_valid_answer_is_parsed(monkeypatch):
+    j = make(monkeypatch, '{"answers": {"category": {"decision": "order", "confidence": 0.8}}}')
+    (out,) = j.decide("x", [Q])
+    assert out.confidence == 0.8 and out.parse_status == "parsed"
+
+
+def test_unknown_hosted_model_reports_unknown_cost(monkeypatch):
     j = make(monkeypatch, '{"answers": {"category": {"decision": "order", "confidence": 0.8}}}',
              model="llama3.1")
     (out,) = j.decide("x", [Q])
-    assert out.cost_usd == 0.0 and out.raw["priced"] is False
+    assert out.cost_usd is None and out.raw["priced"] is False
+
+
+def test_unknown_local_model_is_known_free(monkeypatch):
+    j = make(monkeypatch, '{"answers": {"category": {"decision": "order", "confidence": 0.8}}}',
+             model="llama3.1")
+    j.base_url = "http://localhost:11434/v1"
+    (out,) = j.decide("x", [Q])
+    assert out.cost_usd == 0.0 and out.raw["priced"] is True
 
 
 def test_noul_question_maps_true_false(monkeypatch):
@@ -160,3 +213,15 @@ def test_wall_clock_deadline_trips_when_the_socket_never_times_out(monkeypatch):
     monkeypatch.setattr(urllib.request, "urlopen", urlopen)
     with pytest.raises(TimeoutError):
         llm_mod._fetch_json(urllib.request.Request("http://unit.test/v1"), 0.2)
+
+
+def test_extract_json_scans_past_prose_braces_and_fenced_then_prose():
+    prose = ("Looking at this task: merge `{'a': 1}` with `{'b': 2}`.\n\n"
+             '{"answers": {"route": {"decision": "route_easy", "confidence": 0.9}}}'
+             "\n\n**Reasoning:** short.")
+    assert _extract_json(prose)["answers"]["route"]["decision"] == "route_easy"
+    fenced = ('```json\n{"answers": {"route": {"decision": "route_strong", "confidence": 0.7}}}'
+              "\n```\n\n**Reasoning:** the task hides edge cases.")
+    assert _extract_json(fenced)["answers"]["route"]["confidence"] == 0.7
+    with pytest.raises(ValueError):
+        _extract_json("No JSON here, only `{'python': 'dict'}` syntax.")

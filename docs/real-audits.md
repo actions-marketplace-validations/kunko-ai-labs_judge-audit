@@ -1,13 +1,13 @@
 # Running a real audit against Jev
 
 The published audits in this repo were produced against TypeSafe's Jev through the
-Vercel AI Gateway. This page is everything you need to reproduce one, or run your own.
+AI Gateway evaluate API. This page is everything you need to reproduce one, or run your own.
 
 ## What you need
 
 | | |
 |---|---|
-| A Vercel AI Gateway API key | Vercel dashboard → AI Gateway → API Keys. Export it as `AI_GATEWAY_API_KEY`. |
+| An AI Gateway API key | From the gateway that serves `typesafe-ai/jev` (its dashboard → API Keys). Export it as `AI_GATEWAY_API_KEY`. |
 | Node ≥ 20 | Jev is an *evaluation* model: it is not reachable through `/v1/chat/completions`. The only supported path is the AI SDK `experimental_evaluate` API, so a 50-line Node bridge (`src/judge_audit/judges/bridge/jev_bridge.mjs`) speaks that API and hands JSON back to Python. |
 | Python ≥ 3.10 | `pip install -e ".[dev]"` |
 
@@ -46,9 +46,8 @@ Tune pacing with `JEV_MIN_INTERVAL_S` (default 3 s between calls).
 Then the audit-specific analysis reads the checkpoint — no API call:
 
 ```bash
-python scripts/analyze_adversarial.py examples/email-routing-adversarial/labels.jsonl \
-  --checkpoint docs/runs/audit-jev-adversarial.ckpt.jsonl \
-  --out docs/audit-jev-adversarial.md --json docs/audit-jev-adversarial.json
+python scripts/analyze_adversarial.py            # the whole .md + .json, from the checkpoint
+python scripts/analyze_adversarial.py --charts   # also redraws docs/assets/*-jev-adversarial.png
 
 python scripts/audit_router.py examples/task-routing/labels.jsonl \
   --checkpoint docs/runs/audit-jev-router.ckpt.jsonl \

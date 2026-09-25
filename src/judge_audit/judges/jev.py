@@ -4,8 +4,8 @@ Jev is an *evaluation* model, not a chat model: it answers typed Choice /
 Score / Boolean questions with calibrated probabilities instead of text.
 
 Two backends:
-  - "gateway"  (default): via Vercel AI Gateway + AI SDK `evaluate` API.
-                 Needs a Vercel AI Gateway API key (AI_GATEWAY_API_KEY).
+  - "gateway"  (default): via the AI Gateway + AI SDK `evaluate` API.
+                 Needs an AI Gateway API key (AI_GATEWAY_API_KEY).
                  Jev is NOT reachable via /v1/chat/completions.
   - "typesafe": direct TypeSafe HTTP API (https://api.typesafe.ai/v1/systemone).
                  Needs TYPESAFE_API_KEY (waitlist). Set JEV_ENDPOINT to point the
@@ -28,6 +28,11 @@ import urllib.request
 from pathlib import Path
 
 from .base import Judge, Judgment, Question, QuestionType
+
+# Version of what the judge is shown: `_sdk_question` / `_direct_question`, the criteria
+# map built from each question's options and descriptions. Jev has no text prompt, so this
+# plays the role `prompt_sha256` plays for a chat model — bump it when that shape changes.
+CRITERIA_VERSION = 1
 
 TYPESAFE_ENDPOINT = "https://api.typesafe.ai/v1/systemone"
 DIRECT_MODEL = "jev-latest"
@@ -71,7 +76,7 @@ class JevJudge(Judge):
             if not self.api_key:
                 raise RuntimeError(
                     "AI_GATEWAY_API_KEY is not set. Jev is only reachable through the "
-                    "Vercel AI Gateway evaluate API (dashboard → AI Gateway → API Keys). "
+                    "AI Gateway evaluate API (the gateway dashboard → API Keys). "
                     "See docs/real-audits.md. To try the harness without a key: "
                     "--judge simulated")
             if not _BRIDGE.exists():
@@ -94,8 +99,12 @@ class JevJudge(Judge):
 
     def describe(self) -> dict:
         d = {"name": self.name, "model": self.model, "backend": self.backend,
-             "bridge": "vercel-ai-sdk/experimental_evaluate" if self.backend == "gateway"
+             "bridge": "ai-sdk/experimental_evaluate" if self.backend == "gateway"
              else "typesafe-systemone-http",
+             # Jev takes no sampling temperature: it returns a distribution, not a sample.
+             # It has no text prompt either — what it is shown is the criteria map below.
+             "temperature": "n/a",
+             "criteria_version": CRITERIA_VERSION,
              "input_price_per_mtok_usd": INPUT_PRICE_PER_MTOK}
         if self.backend == "typesafe":
             d["endpoint"] = self.endpoint

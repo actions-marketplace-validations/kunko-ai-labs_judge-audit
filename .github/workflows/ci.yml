@@ -47,10 +47,33 @@ jobs:
       - name: Published audits recompute from their raw checkpoints
         run: |
           python scripts/verify_published.py
+      - name: README tables are the committed JSON, rounded
+        run: |
+          python scripts/verify_readme.py
       - name: Arena table recomputes from its checkpoints
         run: |
           python scripts/arena_report.py
           git diff --exit-code -- docs/arena-2026-09.md docs/arena-2026-09.json
+      - name: Per-run reports recompute from their checkpoints (curves, zero-error, intervals)
+        run: |
+          python scripts/runs_report.py
+          git diff --exit-code -- docs/runs docs/audit-jev-real.json
+      - name: Adversarial audit page recomputes from its checkpoint (the whole document)
+        run: |
+          python scripts/analyze_adversarial.py
+          git diff --exit-code -- docs/audit-jev-adversarial.md docs/audit-jev-adversarial.json
+      - name: Held-out report recomputes from the same checkpoints on the pre-registered split
+        run: |
+          python scripts/heldout_report.py
+          git diff --exit-code -- docs/finetuned-baseline-2026-09.md docs/finetuned-baseline-2026-09.json
+      - name: Checkpoint decisions match the current parser (no silent re-parse debt)
+        run: python scripts/reparse_checkpoints.py --dry-run | tee /tmp/reparse.txt && grep -q '^0 judgment' /tmp/reparse.txt
+      - name: Consensus and jury tables recompute from their checkpoints
+        run: |
+          python scripts/consensus_report.py
+          python scripts/jury_report.py
+          python scripts/jury_deliberate.py --check
+          git diff --exit-code -- docs/consensus-2026-09.md docs/consensus-2026-09.json docs/jury-consensus.md docs/jury-consensus.json
 
   datasets:
     runs-on: ubuntu-latest
@@ -65,3 +88,7 @@ jobs:
             (cd examples/$d && python generate.py >/dev/null)
           done
           git diff --exit-code -- examples/
+      - name: Pre-registered held-out split regenerates byte-identical
+        run: |
+          pip install -e .
+          python scripts/split_heldout.py --check

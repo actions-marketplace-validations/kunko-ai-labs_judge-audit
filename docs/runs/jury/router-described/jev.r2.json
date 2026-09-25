@@ -1,0 +1,218 @@
+{
+  "judge": "jev",
+  "n": 120,
+  "accuracy": 1.0,
+  "confidence": {
+    "known": 120,
+    "total": 120
+  },
+  "ece": 0.0436,
+  "ece_equal_mass": 0.0436,
+  "brier": 0.0076,
+  "reliability_bins": [
+    {
+      "bin": "0.0-0.1",
+      "avg_confidence": null,
+      "accuracy": null,
+      "n": 0
+    },
+    {
+      "bin": "0.1-0.2",
+      "avg_confidence": null,
+      "accuracy": null,
+      "n": 0
+    },
+    {
+      "bin": "0.2-0.3",
+      "avg_confidence": null,
+      "accuracy": null,
+      "n": 0
+    },
+    {
+      "bin": "0.3-0.4",
+      "avg_confidence": null,
+      "accuracy": null,
+      "n": 0
+    },
+    {
+      "bin": "0.4-0.5",
+      "avg_confidence": null,
+      "accuracy": null,
+      "n": 0
+    },
+    {
+      "bin": "0.5-0.6",
+      "avg_confidence": null,
+      "accuracy": null,
+      "n": 0
+    },
+    {
+      "bin": "0.6-0.7",
+      "avg_confidence": 0.63,
+      "accuracy": 1.0,
+      "n": 1
+    },
+    {
+      "bin": "0.7-0.8",
+      "avg_confidence": 0.7525,
+      "accuracy": 1.0,
+      "n": 8
+    },
+    {
+      "bin": "0.8-0.9",
+      "avg_confidence": 0.8657,
+      "accuracy": 1.0,
+      "n": 7
+    },
+    {
+      "bin": "0.9-1.0",
+      "avg_confidence": 0.9813,
+      "accuracy": 1.0,
+      "n": 104
+    }
+  ],
+  "accuracy_coverage": [
+    {
+      "coverage": 0.5667,
+      "accuracy": 1.0,
+      "n": 68,
+      "min_confidence": 1.0
+    },
+    {
+      "coverage": 0.6083,
+      "accuracy": 1.0,
+      "n": 73,
+      "min_confidence": 0.99
+    },
+    {
+      "coverage": 0.65,
+      "accuracy": 1.0,
+      "n": 78,
+      "min_confidence": 0.98
+    },
+    {
+      "coverage": 0.7083,
+      "accuracy": 1.0,
+      "n": 85,
+      "min_confidence": 0.96
+    },
+    {
+      "coverage": 0.7583,
+      "accuracy": 1.0,
+      "n": 91,
+      "min_confidence": 0.93
+    },
+    {
+      "coverage": 0.825,
+      "accuracy": 1.0,
+      "n": 99,
+      "min_confidence": 0.91
+    },
+    {
+      "coverage": 0.8667,
+      "accuracy": 1.0,
+      "n": 104,
+      "min_confidence": 0.9
+    },
+    {
+      "coverage": 0.9083,
+      "accuracy": 1.0,
+      "n": 109,
+      "min_confidence": 0.87
+    },
+    {
+      "coverage": 0.95,
+      "accuracy": 1.0,
+      "n": 114,
+      "min_confidence": 0.78
+    },
+    {
+      "coverage": 1.0,
+      "accuracy": 1.0,
+      "n": 120,
+      "min_confidence": 0.63
+    }
+  ],
+  "zero_error_coverage": {
+    "coverage": 1.0,
+    "n": 120,
+    "threshold": 0.63
+  },
+  "total_cost_usd": 0.002973,
+  "p50_latency_s": 0.589,
+  "p99_latency_s": 0.778,
+  "run": {
+    "timestamp_utc": "2026-09-21T19:06:02+00:00",
+    "judge_audit_version": "0.3.2",
+    "judge": {
+      "name": "jev",
+      "model": "jev-latest",
+      "backend": "typesafe",
+      "bridge": "typesafe-systemone-http",
+      "input_price_per_mtok_usd": 0.042,
+      "endpoint": "https://api.typesafe.ai/v1/systemone"
+    },
+    "python": "3.12.8",
+    "dataset": {
+      "path": "docs/runs/jury/router-described/jev.r2.input.jsonl",
+      "sha256": "c00355b6ede73e757758a8ae7908b240368047466bf88edb233ad286a6d6cd7d",
+      "sha256_rows": "399ce7c0220acea6903a8d5907e2717d1f241757f6443b179477583cf6742e7e",
+      "rows": 120,
+      "ground_truth": {
+        "tier": "GT-1",
+        "label": "constructed",
+        "meaning": "labels are true by construction of a seeded generator; suitable for calibration stress testing, not evidence of real-world accuracy",
+        "validation": "not_validated",
+        "purpose": [
+          "model-routing calibration",
+          "cost-inflation attack resistance",
+          "ablation: options carry a description"
+        ],
+        "caveats": [
+          "the route label is the generator's difficulty class by design (easy -> route_easy, hard -> route_strong), not an observed outcome",
+          "downstream task quality is not measured: whether the cheap model solves the easy tasks and fails the hard ones is unverified",
+          "40 adversarial rows keep the honest label route_easy; _meta.target is what the attacker wanted"
+        ]
+      }
+    },
+    "checkpoint": "docs/runs/jury/router-described/jev.r2.ckpt.jsonl"
+  },
+  "accuracy_ci": [
+    0.9697,
+    1.0
+  ],
+  "accuracy_ci_method": "clopper-pearson",
+  "ece_ci": [
+    0.0235,
+    0.0684
+  ],
+  "ece_ci_method": "bootstrap",
+  "ece_equal_mass_ci": [
+    0.0235,
+    0.0684
+  ],
+  "ece_equal_mass_ci_method": "bootstrap",
+  "brier_ci": [
+    0.0026,
+    0.0145
+  ],
+  "brier_ci_method": "bootstrap",
+  "zero_error_coverage_ci": [
+    0.9697,
+    1.0
+  ],
+  "zero_error_coverage_ci_method": "clopper-pearson",
+  "bootstrap": {
+    "method": "percentile bootstrap over distinct dataset texts (cluster)",
+    "level": 0.95,
+    "n_boot": 2000,
+    "seed": 0
+  },
+  "regenerated": {
+    "utc": "2026-09-23T18:32:04+00:00",
+    "judge_audit_version": "0.4.0",
+    "script": "scripts/runs_report.py",
+    "checkpoint": "docs/runs/jury/router-described/jev.r2.ckpt.jsonl",
+    "labels": "docs/runs/jury/router-described/jev.r2.input.jsonl"
+  }
+}

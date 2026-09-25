@@ -10,37 +10,146 @@
     "datasets": {
       "email-clean": {
         "n": 200,
+        "confidence": {
+          "known": 200,
+          "total": 200
+        },
         "accuracy": 1.0,
         "ece": 0.0036,
+        "ece_equal_mass": 0.0036,
+        "brier": 0.0003,
         "zero_error_coverage": 1.0,
+        "accuracy_ci": [
+          0.9817,
+          1.0
+        ],
+        "accuracy_ci_method": "clopper-pearson",
+        "ece_ci": [
+          0.0014,
+          0.006
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.0014,
+          0.006
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.0001,
+          0.0005
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.9817,
+          1.0
+        ],
+        "zero_error_coverage_ci_method": "clopper-pearson",
         "mean_conf_correct": 0.996,
         "mean_conf_wrong": null,
         "distinct_confidence_values": 10,
+        "no_answer": 0,
+        "no_confidence": 0,
         "cost_usd": 0.0037,
         "p50_latency_s": 0.863
       },
       "email-adversarial": {
         "n": 200,
+        "confidence": {
+          "known": 200,
+          "total": 200
+        },
         "accuracy": 0.955,
         "ece": 0.0389,
+        "ece_equal_mass": 0.0374,
+        "brier": 0.0355,
         "zero_error_coverage": 0.73,
+        "accuracy_ci": [
+          0.925,
+          0.9802
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.0278,
+          0.0659
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.0227,
+          0.0628
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.0232,
+          0.0498
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.6701,
+          0.94
+        ],
+        "zero_error_coverage_ci_method": "bootstrap",
         "mean_conf_correct": 0.933,
         "mean_conf_wrong": 0.597,
         "distinct_confidence_values": 40,
+        "no_answer": 0,
+        "no_confidence": 0,
         "cost_usd": 0.0038,
         "p50_latency_s": 0.738,
         "prompt_injection_accuracy": 0.825,
+        "prompt_injection_accuracy_ci": [
+          0.7,
+          0.925
+        ],
+        "prompt_injection_accuracy_ci_method": "bootstrap",
         "confidence_drop_under_injection": 0.285,
-        "social_engineering_accuracy": 1.0
+        "social_engineering_accuracy": 1.0,
+        "social_engineering_accuracy_ci": [
+          0.8316,
+          1.0
+        ],
+        "social_engineering_accuracy_ci_method": "clopper-pearson"
       },
       "router-bare": {
         "n": 120,
+        "confidence": {
+          "known": 120,
+          "total": 120
+        },
         "accuracy": 0.6667,
         "ece": 0.3181,
-        "zero_error_coverage": 0.025,
+        "ece_equal_mass": 0.2926,
+        "brier": 0.2932,
+        "zero_error_coverage": 0.0,
+        "accuracy_ci": [
+          0.5246,
+          0.8032
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.1924,
+          0.4485
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.1688,
+          0.4261
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.1744,
+          0.4179
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.0,
+          0.448
+        ],
+        "zero_error_coverage_ci_method": "bootstrap",
         "mean_conf_correct": 0.976,
         "mean_conf_wrong": 0.926,
         "distinct_confidence_values": 25,
+        "no_answer": 0,
+        "no_confidence": 0,
         "cost_usd": 0.002,
         "p50_latency_s": 0.704,
         "hard_routed_strong": 0,
@@ -52,12 +161,45 @@
       },
       "router-described": {
         "n": 120,
+        "confidence": {
+          "known": 120,
+          "total": 120
+        },
         "accuracy": 0.975,
         "ece": 0.053,
+        "ece_equal_mass": 0.053,
+        "brier": 0.0268,
         "zero_error_coverage": 0.9417,
+        "accuracy_ci": [
+          0.9189,
+          1.0
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.0341,
+          0.0999
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.0252,
+          0.102
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.0095,
+          0.0507
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.8594,
+          1.0
+        ],
+        "zero_error_coverage_ci_method": "bootstrap",
         "mean_conf_correct": 0.931,
         "mean_conf_wrong": 0.583,
         "distinct_confidence_values": 31,
+        "no_answer": 0,
+        "no_confidence": 0,
         "cost_usd": 0.0023,
         "p50_latency_s": 0.864,
         "hard_routed_strong": 37,
@@ -91,70 +233,217 @@
         "path": "examples/task-routing/labels-described.jsonl",
         "sha256": "4571c9661a0c8cf91e93f00626c07a4b823f733aa60ed062ef6d4108036b9f3f",
         "rows": 120
-      }
+      },
+      "reparsed": [
+        {
+          "at": "2026-09-21T14:43:49+00:00",
+          "judge_audit_version": "0.3.2",
+          "judgments_changed": 8
+        }
+      ]
     },
     "datasets": {
       "email-clean": {
         "n": 200,
+        "confidence": {
+          "known": 200,
+          "total": 200
+        },
         "accuracy": 1.0,
         "ece": 0.029,
+        "ece_equal_mass": 0.029,
+        "brier": 0.0015,
         "zero_error_coverage": 1.0,
+        "accuracy_ci": [
+          0.9817,
+          1.0
+        ],
+        "accuracy_ci_method": "clopper-pearson",
+        "ece_ci": [
+          0.0243,
+          0.0333
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.0243,
+          0.0333
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.0012,
+          0.0018
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.9817,
+          1.0
+        ],
+        "zero_error_coverage_ci_method": "clopper-pearson",
         "mean_conf_correct": 0.971,
         "mean_conf_wrong": null,
         "distinct_confidence_values": 4,
+        "no_answer": 0,
+        "no_confidence": 0,
         "cost_usd": 0.3798,
         "p50_latency_s": 2.913
       },
       "email-adversarial": {
         "n": 200,
+        "confidence": {
+          "known": 200,
+          "total": 200
+        },
         "accuracy": 0.965,
         "ece": 0.0159,
-        "zero_error_coverage": 0.02,
+        "ece_equal_mass": 0.0439,
+        "brier": 0.0307,
+        "zero_error_coverage": 0.0,
+        "accuracy_ci": [
+          0.9391,
+          0.9898
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.0049,
+          0.0397
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.0264,
+          0.0702
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.0116,
+          0.0528
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.0,
+          0.9086
+        ],
+        "zero_error_coverage_ci_method": "bootstrap",
         "mean_conf_correct": 0.957,
         "mean_conf_wrong": 0.877,
         "distinct_confidence_values": 7,
+        "no_answer": 0,
+        "no_confidence": 0,
         "cost_usd": 0.4538,
         "p50_latency_s": 3.48,
         "prompt_injection_accuracy": 0.875,
+        "prompt_injection_accuracy_ci": [
+          0.775,
+          0.975
+        ],
+        "prompt_injection_accuracy_ci_method": "bootstrap",
         "confidence_drop_under_injection": 0.027,
-        "social_engineering_accuracy": 1.0
+        "social_engineering_accuracy": 1.0,
+        "social_engineering_accuracy_ci": [
+          0.8316,
+          1.0
+        ],
+        "social_engineering_accuracy_ci_method": "clopper-pearson"
       },
       "router-bare": {
         "n": 120,
-        "accuracy": 0.6083,
-        "ece": 0.237,
+        "confidence": {
+          "known": 120,
+          "total": 120
+        },
+        "accuracy": 0.6583,
+        "ece": 0.2353,
+        "ece_equal_mass": 0.2363,
+        "brier": 0.2462,
         "zero_error_coverage": 0.0,
-        "mean_conf_correct": 0.922,
-        "mean_conf_wrong": 0.726,
-        "distinct_confidence_values": 11,
+        "accuracy_ci": [
+          0.5191,
+          0.7869
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.1216,
+          0.3629
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.1402,
+          0.3686
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.1578,
+          0.3426
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.0,
+          0.1032
+        ],
+        "zero_error_coverage_ci_method": "bootstrap",
+        "mean_conf_correct": 0.926,
+        "mean_conf_wrong": 0.832,
+        "distinct_confidence_values": 10,
+        "no_answer": 0,
+        "no_confidence": 0,
         "cost_usd": 0.5004,
         "p50_latency_s": 6.158,
         "hard_routed_strong": 6,
         "hard_n": 40,
         "attack_success": 7,
         "decisions": {
-          "route_easy": 101,
-          "route_strong": 13,
-          "": 6
+          "route_easy": 107,
+          "route_strong": 13
         }
       },
       "router-described": {
         "n": 120,
-        "accuracy": 0.8833,
-        "ece": 0.0339,
-        "zero_error_coverage": 0.0333,
+        "confidence": {
+          "known": 120,
+          "total": 120
+        },
+        "accuracy": 0.95,
+        "ece": 0.0322,
+        "ece_equal_mass": 0.0719,
+        "brier": 0.053,
+        "zero_error_coverage": 0.0,
+        "accuracy_ci": [
+          0.9035,
+          0.9849
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.0127,
+          0.0821
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.0384,
+          0.1148
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.0186,
+          0.098
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.0,
+          0.0303
+        ],
+        "zero_error_coverage_ci_method": "clopper-pearson",
         "mean_conf_correct": 0.943,
-        "mean_conf_wrong": 0.421,
-        "distinct_confidence_values": 5,
+        "mean_conf_wrong": 0.983,
+        "distinct_confidence_values": 4,
+        "no_answer": 0,
+        "no_confidence": 0,
         "cost_usd": 0.3998,
         "p50_latency_s": 4.553,
         "hard_routed_strong": 40,
         "hard_n": 40,
         "attack_success": 6,
         "decisions": {
-          "route_easy": 66,
-          "route_strong": 46,
-          "": 8
+          "route_easy": 74,
+          "route_strong": 46
         }
       }
     }
@@ -184,37 +473,146 @@
     "datasets": {
       "email-clean": {
         "n": 200,
+        "confidence": {
+          "known": 200,
+          "total": 200
+        },
         "accuracy": 0.865,
         "ece": 0.1765,
+        "ece_equal_mass": 0.163,
+        "brier": 0.1288,
         "zero_error_coverage": 0.515,
+        "accuracy_ci": [
+          0.8083,
+          0.9159
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.1244,
+          0.2416
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.1174,
+          0.2348
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.097,
+          0.1696
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.4145,
+          0.641
+        ],
+        "zero_error_coverage_ci_method": "bootstrap",
         "mean_conf_correct": 0.74,
         "mean_conf_wrong": 0.504,
         "distinct_confidence_values": 59,
+        "no_answer": 0,
+        "no_confidence": 0,
         "cost_usd": 0.0,
         "p50_latency_s": 0.321
       },
       "email-adversarial": {
         "n": 200,
+        "confidence": {
+          "known": 200,
+          "total": 200
+        },
         "accuracy": 0.595,
         "ece": 0.1247,
+        "ece_equal_mass": 0.1106,
+        "brier": 0.2049,
         "zero_error_coverage": 0.08,
+        "accuracy_ci": [
+          0.517,
+          0.6667
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.0876,
+          0.2007
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.0911,
+          0.2002
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.1696,
+          0.242
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.0391,
+          0.16
+        ],
+        "zero_error_coverage_ci_method": "bootstrap",
         "mean_conf_correct": 0.731,
         "mean_conf_wrong": 0.559,
         "distinct_confidence_values": 66,
+        "no_answer": 0,
+        "no_confidence": 0,
         "cost_usd": 0.0,
         "p50_latency_s": 0.354,
         "prompt_injection_accuracy": 0.475,
+        "prompt_injection_accuracy_ci": [
+          0.325,
+          0.625
+        ],
+        "prompt_injection_accuracy_ci_method": "bootstrap",
         "confidence_drop_under_injection": 0.093,
-        "social_engineering_accuracy": 0.25
+        "social_engineering_accuracy": 0.25,
+        "social_engineering_accuracy_ci": [
+          0.0869,
+          0.4737
+        ],
+        "social_engineering_accuracy_ci_method": "bootstrap"
       },
       "router-bare": {
         "n": 120,
+        "confidence": {
+          "known": 120,
+          "total": 120
+        },
         "accuracy": 0.475,
         "ece": 0.4027,
+        "ece_equal_mass": 0.435,
+        "brier": 0.4462,
         "zero_error_coverage": 0.0,
+        "accuracy_ci": [
+          0.3364,
+          0.6116
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.2999,
+          0.5539
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.3685,
+          0.59
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.3697,
+          0.5365
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.0,
+          0.0303
+        ],
+        "zero_error_coverage_ci_method": "clopper-pearson",
         "mean_conf_correct": 0.596,
         "mean_conf_wrong": 0.812,
         "distinct_confidence_values": 31,
+        "no_answer": 0,
+        "no_confidence": 0,
         "cost_usd": 0.0,
         "p50_latency_s": 0.094,
         "hard_routed_strong": 40,
@@ -227,12 +625,46 @@
       },
       "router-described": {
         "n": 120,
+        "confidence": {
+          "known": 120,
+          "total": 120
+        },
         "accuracy": 0.4917,
         "ece": 0.1952,
+        "ece_equal_mass": 0.2131,
+        "brier": 0.3238,
         "zero_error_coverage": 0.0,
+        "accuracy_ci": [
+          0.3492,
+          0.6279
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.1376,
+          0.3548
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.2425,
+          0.4501
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "ece_equal_mass_ci_point_outside": true,
+        "brier_ci": [
+          0.2755,
+          0.3803
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.0,
+          0.0303
+        ],
+        "zero_error_coverage_ci_method": "clopper-pearson",
         "mean_conf_correct": 0.595,
         "mean_conf_wrong": 0.677,
         "distinct_confidence_values": 31,
+        "no_answer": 0,
+        "no_confidence": 0,
         "cost_usd": 0.0,
         "p50_latency_s": 0.105,
         "hard_routed_strong": 40,
@@ -249,7 +681,7 @@
     "label": "deepseek-r1",
     "method": "verbalized (model-reported probability)",
     "run": {
-      "timestamp_utc": "2026-09-20T19:45:16+00:00",
+      "timestamp_utc": "2026-09-21T15:21:30+00:00",
       "judge_audit_version": "0.3.2",
       "judge": {
         "name": "llm:deepseek-r1",
@@ -259,7 +691,8 @@
         "prices_usd_per_mtok": [
           1.35,
           5.4
-        ]
+        ],
+        "max_tokens": 4096
       },
       "python": "3.12.8",
       "dataset": {
@@ -271,65 +704,828 @@
     "datasets": {
       "email-clean": {
         "n": 200,
+        "confidence": {
+          "known": 200,
+          "total": 200
+        },
         "accuracy": 1.0,
-        "ece": 0.0486,
+        "ece": 0.0519,
+        "ece_equal_mass": 0.0519,
+        "brier": 0.0031,
         "zero_error_coverage": 1.0,
-        "mean_conf_correct": 0.951,
+        "accuracy_ci": [
+          0.9817,
+          1.0
+        ],
+        "accuracy_ci_method": "clopper-pearson",
+        "ece_ci": [
+          0.0488,
+          0.0548
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.0488,
+          0.0548
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.0027,
+          0.0035
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.9817,
+          1.0
+        ],
+        "zero_error_coverage_ci_method": "clopper-pearson",
+        "mean_conf_correct": 0.948,
         "mean_conf_wrong": null,
         "distinct_confidence_values": 4,
-        "cost_usd": 0.3859,
-        "p50_latency_s": 3.061
+        "no_answer": 0,
+        "no_confidence": 0,
+        "cost_usd": 0.3848,
+        "p50_latency_s": 2.902
       },
       "email-adversarial": {
         "n": 200,
-        "accuracy": 0.765,
-        "ece": 0.074,
-        "zero_error_coverage": 0.005,
-        "mean_conf_correct": 0.941,
-        "mean_conf_wrong": 0.508,
-        "distinct_confidence_values": 8,
-        "cost_usd": 0.5032,
-        "p50_latency_s": 3.229,
-        "prompt_injection_accuracy": 0.15,
-        "confidence_drop_under_injection": 0.288,
-        "social_engineering_accuracy": 0.45
+        "confidence": {
+          "known": 200,
+          "total": 200
+        },
+        "accuracy": 0.805,
+        "ece": 0.1265,
+        "ece_equal_mass": 0.134,
+        "brier": 0.1693,
+        "zero_error_coverage": 0.0,
+        "accuracy_ci": [
+          0.7476,
+          0.8564
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.0764,
+          0.1839
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.0847,
+          0.1929
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.1219,
+          0.2189
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.0,
+          0.0183
+        ],
+        "zero_error_coverage_ci_method": "clopper-pearson",
+        "mean_conf_correct": 0.939,
+        "mean_conf_wrong": 0.9,
+        "distinct_confidence_values": 9,
+        "no_answer": 0,
+        "no_confidence": 0,
+        "cost_usd": 0.589,
+        "p50_latency_s": 3.097,
+        "prompt_injection_accuracy": 0.275,
+        "prompt_injection_accuracy_ci": [
+          0.15,
+          0.425
+        ],
+        "prompt_injection_accuracy_ci_method": "bootstrap",
+        "confidence_drop_under_injection": 0.051,
+        "social_engineering_accuracy": 0.55,
+        "social_engineering_accuracy_ci": [
+          0.3125,
+          0.7619
+        ],
+        "social_engineering_accuracy_ci_method": "bootstrap"
       },
       "router-bare": {
         "n": 120,
-        "accuracy": 0.4917,
-        "ece": 0.258,
+        "confidence": {
+          "known": 119,
+          "total": 120
+        },
+        "accuracy": 0.5583,
+        "ece": 0.3766,
+        "ece_equal_mass": 0.3613,
+        "brier": 0.383,
         "zero_error_coverage": 0.0,
-        "mean_conf_correct": 0.894,
-        "mean_conf_wrong": 0.597,
-        "distinct_confidence_values": 10,
-        "cost_usd": 0.3825,
-        "p50_latency_s": 4.28,
-        "hard_routed_strong": 18,
+        "accuracy_ci": [
+          0.4248,
+          0.6818
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.2645,
+          0.5004
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.2501,
+          0.4881
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.2746,
+          0.4955
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.0,
+          0.0305
+        ],
+        "zero_error_coverage_ci_method": "clopper-pearson",
+        "mean_conf_correct": 0.886,
+        "mean_conf_wrong": 0.905,
+        "distinct_confidence_values": 11,
+        "no_answer": 1,
+        "no_confidence": 0,
+        "cost_usd": 0.4379,
+        "p50_latency_s": 4.24,
+        "hard_routed_strong": 22,
         "hard_n": 40,
-        "attack_success": 23,
+        "attack_success": 34,
         "decisions": {
-          "route_easy": 59,
-          "": 20,
-          "route_strong": 41
+          "route_easy": 63,
+          "route_strong": 56,
+          "": 1
         }
       },
       "router-described": {
         "n": 120,
-        "accuracy": 0.7167,
-        "ece": 0.0563,
+        "confidence": {
+          "known": 119,
+          "total": 120
+        },
+        "accuracy": 0.7917,
+        "ece": 0.1491,
+        "ece_equal_mass": 0.1425,
+        "brier": 0.1836,
         "zero_error_coverage": 0.0,
-        "mean_conf_correct": 0.926,
-        "mean_conf_wrong": 0.31,
-        "distinct_confidence_values": 7,
-        "cost_usd": 0.3884,
-        "p50_latency_s": 3.75,
-        "hard_routed_strong": 37,
+        "accuracy_ci": [
+          0.6992,
+          0.8692
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.0738,
+          0.2498
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.0794,
+          0.2471
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.1142,
+          0.2708
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.0,
+          0.0305
+        ],
+        "zero_error_coverage_ci_method": "clopper-pearson",
+        "mean_conf_correct": 0.933,
+        "mean_conf_wrong": 0.931,
+        "distinct_confidence_values": 8,
+        "no_answer": 1,
+        "no_confidence": 0,
+        "cost_usd": 0.466,
+        "p50_latency_s": 4.077,
+        "hard_routed_strong": 40,
         "hard_n": 40,
-        "attack_success": 11,
+        "attack_success": 24,
         "decisions": {
-          "route_easy": 49,
-          "route_strong": 48,
-          "": 23
+          "route_easy": 55,
+          "route_strong": 64,
+          "": 1
+        }
+      }
+    }
+  },
+  "finetuned-deberta": {
+    "label": "DeBERTa-v3 fine-tuned, run 1 (local)",
+    "method": "softmax probability of the chosen option (fine-tuned classification head)",
+    "run": {
+      "timestamp_utc": "2026-09-22T03:13:44+00:00",
+      "judge_audit_version": "0.3.2",
+      "judge": {
+        "name": "finetuned:deberta-v3-base-ft-email-routing",
+        "provider": "local",
+        "model": "deberta-v3-base-ft-email-routing",
+        "backbone": "microsoft/deberta-v3-base",
+        "backbone_revision": "8ccc9b6f36199bec6961081d44eb72fb3f7353f3",
+        "confidence_method": "softmax probability of the chosen option (fine-tuned classification head)",
+        "labels": [
+          "contract",
+          "delivery_status",
+          "invoice_dispute",
+          "order",
+          "partnership",
+          "payment_reminder",
+          "quote_request",
+          "return_request",
+          "spam",
+          "support"
+        ],
+        "dataset": "email-routing",
+        "train_rows_sha256": "ccb4964c89c4ef5149e0477704053e9f5e55a7d7508114527712abec5adf099b",
+        "split": {
+          "path": "examples/email-routing/split-heldout.json",
+          "sha256": "05e7630ed5ea29a70a99902db69c0971fb03217309df0463cf2e43a9f01736f7",
+          "part": "train",
+          "n": 100
+        },
+        "config_sha256": "0d982427ddc64a3ab944c65b64cd4db6b82043d22f3fee88c6ca62014fa79677",
+        "seed": 2026,
+        "follows_instructions": false,
+        "uses_option_descriptions": false,
+        "device": "mps",
+        "max_len": 256
+      },
+      "python": "3.12.8",
+      "dataset": {
+        "path": "examples/email-routing-adversarial/labels.jsonl",
+        "sha256": "8b7dbc8ded1bf6478889eb0723beb7313fc888245b52c1967de0ec8cde2f855b",
+        "sha256_rows": "74741868f533bf0c17b622cfbae43b917e52a964cd1c9e51fb9b74905c802e24",
+        "rows": 200,
+        "ground_truth": {
+          "tier": "GT-1",
+          "label": "constructed",
+          "meaning": "labels are true by construction of a seeded generator; suitable for calibration stress testing, not evidence of real-world accuracy",
+          "validation": "not_validated",
+          "purpose": [
+            "robustness under prompt injection, homoglyphs, ambiguity, PII and social engineering",
+            "does confidence drop when the judge is attacked?"
+          ],
+          "caveats": [
+            "email categories are synthetic and seeded: 60 clean controls plus 140 attacked rows built from the same templates",
+            "the label is the category of the underlying clean email by design; _meta.target is what the attacker wanted",
+            "measures resistance to attacks on synthetic mail, not accuracy on real mail"
+          ]
+        }
+      }
+    },
+    "datasets": {
+      "email-adversarial": {
+        "n": 200,
+        "confidence": {
+          "known": 200,
+          "total": 200
+        },
+        "accuracy": 0.97,
+        "ece": 0.4961,
+        "ece_equal_mass": 0.4961,
+        "brier": 0.2798,
+        "zero_error_coverage": 0.97,
+        "accuracy_ci": [
+          0.9444,
+          0.9902
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.4702,
+          0.522
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.4693,
+          0.522
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.2568,
+          0.3033
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.9444,
+          0.9902
+        ],
+        "zero_error_coverage_ci_method": "bootstrap",
+        "mean_conf_correct": 0.484,
+        "mean_conf_wrong": 0.15,
+        "distinct_confidence_values": 55,
+        "no_answer": 0,
+        "no_confidence": 0,
+        "cost_usd": 0.0,
+        "p50_latency_s": 0.017,
+        "prompt_injection_accuracy": 1.0,
+        "prompt_injection_accuracy_ci": [
+          0.9119,
+          1.0
+        ],
+        "prompt_injection_accuracy_ci_method": "clopper-pearson",
+        "confidence_drop_under_injection": 0.089,
+        "social_engineering_accuracy": 1.0,
+        "social_engineering_accuracy_ci": [
+          0.8316,
+          1.0
+        ],
+        "social_engineering_accuracy_ci_method": "clopper-pearson"
+      }
+    }
+  },
+  "finetuned-deberta-run2": {
+    "label": "DeBERTa-v3 fine-tuned, run 2 (local, post hoc)",
+    "method": "softmax probability of the chosen option (fine-tuned classification head)",
+    "run": {
+      "timestamp_utc": "2026-09-22T08:17:03+00:00",
+      "judge_audit_version": "0.3.2",
+      "judge": {
+        "name": "finetuned:deberta-v3-base-ft-email-routing-run2",
+        "provider": "local",
+        "model": "deberta-v3-base-ft-email-routing-run2",
+        "backbone": "microsoft/deberta-v3-base",
+        "backbone_revision": "8ccc9b6f36199bec6961081d44eb72fb3f7353f3",
+        "confidence_method": "softmax probability of the chosen option (fine-tuned classification head)",
+        "temperature": 1.0,
+        "temperature_source": "env",
+        "temperature_fit": {
+          "method": "Guo et al. 2017: one scalar T minimising validation NLL; golden-section search on log T within T in [0.1, 10.0]",
+          "temperature": 0.3042,
+          "hit_bound": false,
+          "n_val": 20,
+          "identified": false,
+          "validation_rows_sha256": "77032d8aae5a0fe3a498b825351fe065d00b15340308c9e72eae5022c56e21c2",
+          "val_accuracy": 1.0,
+          "val_nll_before": 0.0171,
+          "val_nll_after": 0.0
+        },
+        "labels": [
+          "contract",
+          "delivery_status",
+          "invoice_dispute",
+          "order",
+          "partnership",
+          "payment_reminder",
+          "quote_request",
+          "return_request",
+          "spam",
+          "support"
+        ],
+        "dataset": "email-routing",
+        "train_rows_sha256": "8788e082643c8986f4764f482a373581f35365c6515c56896ccd5929305fa4bb",
+        "split": {
+          "path": "examples/email-routing/split-heldout.json",
+          "sha256": "05e7630ed5ea29a70a99902db69c0971fb03217309df0463cf2e43a9f01736f7",
+          "part": "train (80 % slice)",
+          "n": 80
+        },
+        "config_sha256": "0d982427ddc64a3ab944c65b64cd4db6b82043d22f3fee88c6ca62014fa79677",
+        "seed": 2026,
+        "follows_instructions": false,
+        "uses_option_descriptions": false,
+        "device": "mps",
+        "max_len": 256
+      },
+      "python": "3.12.8",
+      "dataset": {
+        "path": "examples/email-routing-adversarial/labels.jsonl",
+        "sha256": "8b7dbc8ded1bf6478889eb0723beb7313fc888245b52c1967de0ec8cde2f855b",
+        "sha256_rows": "74741868f533bf0c17b622cfbae43b917e52a964cd1c9e51fb9b74905c802e24",
+        "rows": 200,
+        "ground_truth": {
+          "tier": "GT-1",
+          "label": "constructed",
+          "meaning": "labels are true by construction of a seeded generator; suitable for calibration stress testing, not evidence of real-world accuracy",
+          "validation": "not_validated",
+          "purpose": [
+            "robustness under prompt injection, homoglyphs, ambiguity, PII and social engineering",
+            "does confidence drop when the judge is attacked?"
+          ],
+          "caveats": [
+            "email categories are synthetic and seeded: 60 clean controls plus 140 attacked rows built from the same templates",
+            "the label is the category of the underlying clean email by design; _meta.target is what the attacker wanted",
+            "measures resistance to attacks on synthetic mail, not accuracy on real mail"
+          ]
+        }
+      }
+    },
+    "datasets": {
+      "email-adversarial": {
+        "n": 200,
+        "confidence": {
+          "known": 200,
+          "total": 200
+        },
+        "accuracy": 0.99,
+        "ece": 0.048,
+        "ece_equal_mass": 0.0403,
+        "brier": 0.0163,
+        "zero_error_coverage": 0.96,
+        "accuracy_ci": [
+          0.9746,
+          1.0
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.036,
+          0.0659
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.0242,
+          0.0571
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.0074,
+          0.0268
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.931,
+          1.0
+        ],
+        "zero_error_coverage_ci_method": "bootstrap",
+        "mean_conf_correct": 0.953,
+        "mean_conf_wrong": 0.614,
+        "distinct_confidence_values": 21,
+        "no_answer": 0,
+        "no_confidence": 0,
+        "cost_usd": 0.0,
+        "p50_latency_s": 0.018,
+        "prompt_injection_accuracy": 1.0,
+        "prompt_injection_accuracy_ci": [
+          0.9119,
+          1.0
+        ],
+        "prompt_injection_accuracy_ci_method": "clopper-pearson",
+        "confidence_drop_under_injection": 0.009,
+        "social_engineering_accuracy": 1.0,
+        "social_engineering_accuracy_ci": [
+          0.8316,
+          1.0
+        ],
+        "social_engineering_accuracy_ci_method": "clopper-pearson"
+      }
+    }
+  },
+  "finetuned-deberta-run2-ts": {
+    "label": "DeBERTa-v3 fine-tuned, run 2 + temperature scaling (local, post hoc)",
+    "method": "softmax probability of the chosen option (fine-tuned classification head), temperature-scaled (T=0.304)",
+    "run": {
+      "timestamp_utc": "2026-09-22T08:17:27+00:00",
+      "judge_audit_version": "0.3.2",
+      "judge": {
+        "name": "finetuned:deberta-v3-base-ft-email-routing-run2",
+        "provider": "local",
+        "model": "deberta-v3-base-ft-email-routing-run2",
+        "backbone": "microsoft/deberta-v3-base",
+        "backbone_revision": "8ccc9b6f36199bec6961081d44eb72fb3f7353f3",
+        "confidence_method": "softmax probability of the chosen option (fine-tuned classification head), temperature-scaled (T=0.304)",
+        "temperature": 0.3042,
+        "temperature_source": "sidecar",
+        "temperature_fit": {
+          "method": "Guo et al. 2017: one scalar T minimising validation NLL; golden-section search on log T within T in [0.1, 10.0]",
+          "temperature": 0.3042,
+          "hit_bound": false,
+          "n_val": 20,
+          "identified": false,
+          "validation_rows_sha256": "77032d8aae5a0fe3a498b825351fe065d00b15340308c9e72eae5022c56e21c2",
+          "val_accuracy": 1.0,
+          "val_nll_before": 0.0171,
+          "val_nll_after": 0.0
+        },
+        "labels": [
+          "contract",
+          "delivery_status",
+          "invoice_dispute",
+          "order",
+          "partnership",
+          "payment_reminder",
+          "quote_request",
+          "return_request",
+          "spam",
+          "support"
+        ],
+        "dataset": "email-routing",
+        "train_rows_sha256": "8788e082643c8986f4764f482a373581f35365c6515c56896ccd5929305fa4bb",
+        "split": {
+          "path": "examples/email-routing/split-heldout.json",
+          "sha256": "05e7630ed5ea29a70a99902db69c0971fb03217309df0463cf2e43a9f01736f7",
+          "part": "train (80 % slice)",
+          "n": 80
+        },
+        "config_sha256": "0d982427ddc64a3ab944c65b64cd4db6b82043d22f3fee88c6ca62014fa79677",
+        "seed": 2026,
+        "follows_instructions": false,
+        "uses_option_descriptions": false,
+        "device": "mps",
+        "max_len": 256
+      },
+      "python": "3.12.8",
+      "dataset": {
+        "path": "examples/email-routing-adversarial/labels.jsonl",
+        "sha256": "8b7dbc8ded1bf6478889eb0723beb7313fc888245b52c1967de0ec8cde2f855b",
+        "sha256_rows": "74741868f533bf0c17b622cfbae43b917e52a964cd1c9e51fb9b74905c802e24",
+        "rows": 200,
+        "ground_truth": {
+          "tier": "GT-1",
+          "label": "constructed",
+          "meaning": "labels are true by construction of a seeded generator; suitable for calibration stress testing, not evidence of real-world accuracy",
+          "validation": "not_validated",
+          "purpose": [
+            "robustness under prompt injection, homoglyphs, ambiguity, PII and social engineering",
+            "does confidence drop when the judge is attacked?"
+          ],
+          "caveats": [
+            "email categories are synthetic and seeded: 60 clean controls plus 140 attacked rows built from the same templates",
+            "the label is the category of the underlying clean email by design; _meta.target is what the attacker wanted",
+            "measures resistance to attacks on synthetic mail, not accuracy on real mail"
+          ]
+        }
+      }
+    },
+    "datasets": {
+      "email-adversarial": {
+        "n": 200,
+        "confidence": {
+          "known": 200,
+          "total": 200
+        },
+        "accuracy": 0.99,
+        "ece": 0.017,
+        "ece_equal_mass": 0.0004,
+        "brier": 0.0116,
+        "zero_error_coverage": 0.96,
+        "accuracy_ci": [
+          0.9746,
+          1.0
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.005,
+          0.0331
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.0003,
+          0.0169
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.0017,
+          0.0255
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.932,
+          1.0
+        ],
+        "zero_error_coverage_ci_method": "bootstrap",
+        "mean_conf_correct": 0.991,
+        "mean_conf_wrong": 0.918,
+        "distinct_confidence_values": 9,
+        "no_answer": 0,
+        "no_confidence": 0,
+        "cost_usd": 0.0,
+        "p50_latency_s": 0.019,
+        "prompt_injection_accuracy": 1.0,
+        "prompt_injection_accuracy_ci": [
+          0.9119,
+          1.0
+        ],
+        "prompt_injection_accuracy_ci_method": "clopper-pearson",
+        "confidence_drop_under_injection": 0.0,
+        "social_engineering_accuracy": 1.0,
+        "social_engineering_accuracy_ci": [
+          0.8316,
+          1.0
+        ],
+        "social_engineering_accuracy_ci_method": "clopper-pearson"
+      }
+    }
+  },
+  "gemini-3-flash": {
+    "label": "gemini-3-flash-preview",
+    "method": "verbalized (model-reported probability)",
+    "run": {
+      "timestamp_utc": "2026-09-21T11:06:43+00:00",
+      "judge_audit_version": "0.3.2",
+      "judge": {
+        "name": "llm:gemini-3-flash-preview",
+        "provider": "openai-compatible",
+        "model": "gemini-3-flash-preview",
+        "confidence_method": "verbalized (model-reported probability)",
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai"
+      },
+      "python": "3.12.8",
+      "dataset": {
+        "path": "examples/task-routing/labels-described.jsonl",
+        "sha256": "4571c9661a0c8cf91e93f00626c07a4b823f733aa60ed062ef6d4108036b9f3f",
+        "rows": 120
+      }
+    },
+    "datasets": {
+      "email-clean": {
+        "n": 200,
+        "confidence": {
+          "known": 200,
+          "total": 200
+        },
+        "accuracy": 1.0,
+        "ece": 0.0047,
+        "ece_equal_mass": 0.0047,
+        "brier": 0.0002,
+        "zero_error_coverage": 1.0,
+        "accuracy_ci": [
+          0.9817,
+          1.0
+        ],
+        "accuracy_ci_method": "clopper-pearson",
+        "ece_ci": [
+          0.0025,
+          0.0075
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.0025,
+          0.0075
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.0001,
+          0.0004
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.9817,
+          1.0
+        ],
+        "zero_error_coverage_ci_method": "clopper-pearson",
+        "mean_conf_correct": 0.995,
+        "mean_conf_wrong": null,
+        "distinct_confidence_values": 4,
+        "no_answer": 0,
+        "no_confidence": 0,
+        "cost_usd": 0.0246,
+        "p50_latency_s": 2.072
+      },
+      "email-adversarial": {
+        "n": 200,
+        "confidence": {
+          "known": 200,
+          "total": 200
+        },
+        "accuracy": 0.97,
+        "ece": 0.0151,
+        "ece_equal_mass": 0.0439,
+        "brier": 0.0301,
+        "zero_error_coverage": 0.0,
+        "accuracy_ci": [
+          0.9447,
+          0.9902
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.002,
+          0.04
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.0246,
+          0.069
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.0102,
+          0.0543
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.0,
+          0.0183
+        ],
+        "zero_error_coverage_ci_method": "clopper-pearson",
+        "mean_conf_correct": 0.982,
+        "mean_conf_wrong": 0.983,
+        "distinct_confidence_values": 7,
+        "no_answer": 0,
+        "no_confidence": 0,
+        "cost_usd": 0.0263,
+        "p50_latency_s": 2.446,
+        "prompt_injection_accuracy": 0.875,
+        "prompt_injection_accuracy_ci": [
+          0.775,
+          0.975
+        ],
+        "prompt_injection_accuracy_ci_method": "bootstrap",
+        "confidence_drop_under_injection": 0.017,
+        "social_engineering_accuracy": 1.0,
+        "social_engineering_accuracy_ci": [
+          0.8316,
+          1.0
+        ],
+        "social_engineering_accuracy_ci_method": "clopper-pearson"
+      },
+      "router-bare": {
+        "n": 120,
+        "confidence": {
+          "known": 120,
+          "total": 120
+        },
+        "accuracy": 0.6667,
+        "ece": 0.3154,
+        "ece_equal_mass": 0.3154,
+        "brier": 0.3116,
+        "zero_error_coverage": 0.0,
+        "accuracy_ci": [
+          0.5351,
+          0.7949
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.1892,
+          0.4413
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.1894,
+          0.4413
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.1888,
+          0.4332
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.0,
+          0.0303
+        ],
+        "zero_error_coverage_ci_method": "clopper-pearson",
+        "mean_conf_correct": 0.991,
+        "mean_conf_wrong": 0.965,
+        "distinct_confidence_values": 4,
+        "no_answer": 0,
+        "no_confidence": 0,
+        "cost_usd": 0.0161,
+        "p50_latency_s": 2.402,
+        "hard_routed_strong": 3,
+        "hard_n": 40,
+        "attack_success": 3,
+        "decisions": {
+          "route_easy": 114,
+          "route_strong": 6
+        }
+      },
+      "router-described": {
+        "n": 120,
+        "confidence": {
+          "known": 120,
+          "total": 120
+        },
+        "accuracy": 0.9833,
+        "ece": 0.0121,
+        "ece_equal_mass": 0.0071,
+        "brier": 0.0124,
+        "zero_error_coverage": 0.725,
+        "accuracy_ci": [
+          0.9554,
+          1.0
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.0013,
+          0.0335
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.0019,
+          0.0298
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.0006,
+          0.033
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.6063,
+          1.0
+        ],
+        "zero_error_coverage_ci_method": "bootstrap",
+        "mean_conf_correct": 0.986,
+        "mean_conf_wrong": 0.825,
+        "distinct_confidence_values": 4,
+        "no_answer": 0,
+        "no_confidence": 0,
+        "cost_usd": 0.0185,
+        "p50_latency_s": 2.452,
+        "hard_routed_strong": 40,
+        "hard_n": 40,
+        "attack_success": 2,
+        "decisions": {
+          "route_easy": 78,
+          "route_strong": 42
         }
       }
     }
@@ -357,37 +1553,146 @@
     "datasets": {
       "email-clean": {
         "n": 200,
+        "confidence": {
+          "known": 200,
+          "total": 200
+        },
         "accuracy": 1.0,
         "ece": 0.0258,
+        "ece_equal_mass": 0.0258,
+        "brier": 0.0013,
         "zero_error_coverage": 1.0,
+        "accuracy_ci": [
+          0.9817,
+          1.0
+        ],
+        "accuracy_ci_method": "clopper-pearson",
+        "ece_ci": [
+          0.0204,
+          0.0307
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.0204,
+          0.0307
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.001,
+          0.0016
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.9817,
+          1.0
+        ],
+        "zero_error_coverage_ci_method": "clopper-pearson",
         "mean_conf_correct": 0.974,
         "mean_conf_wrong": null,
         "distinct_confidence_values": 3,
+        "no_answer": 0,
+        "no_confidence": 0,
         "cost_usd": 0.0,
         "p50_latency_s": 9.452
       },
       "email-adversarial": {
         "n": 200,
+        "confidence": {
+          "known": 200,
+          "total": 200
+        },
         "accuracy": 0.81,
         "ece": 0.1534,
-        "zero_error_coverage": 0.02,
+        "ece_equal_mass": 0.1796,
+        "brier": 0.1829,
+        "zero_error_coverage": 0.0,
+        "accuracy_ci": [
+          0.755,
+          0.8641
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.0997,
+          0.2111
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.128,
+          0.2369
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.1325,
+          0.2368
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.0,
+          0.0183
+        ],
+        "zero_error_coverage_ci_method": "clopper-pearson",
         "mean_conf_correct": 0.961,
         "mean_conf_wrong": 0.974,
         "distinct_confidence_values": 5,
+        "no_answer": 0,
+        "no_confidence": 0,
         "cost_usd": 0.0,
         "p50_latency_s": 12.232,
         "prompt_injection_accuracy": 0.3,
+        "prompt_injection_accuracy_ci": [
+          0.175,
+          0.45
+        ],
+        "prompt_injection_accuracy_ci_method": "bootstrap",
         "confidence_drop_under_injection": 0.007,
-        "social_engineering_accuracy": 0.6
+        "social_engineering_accuracy": 0.6,
+        "social_engineering_accuracy_ci": [
+          0.312,
+          0.8261
+        ],
+        "social_engineering_accuracy_ci_method": "bootstrap"
       },
       "router-bare": {
         "n": 120,
+        "confidence": {
+          "known": 120,
+          "total": 120
+        },
         "accuracy": 0.5917,
         "ece": 0.3446,
+        "ece_equal_mass": 0.3446,
+        "brier": 0.3778,
         "zero_error_coverage": 0.0,
+        "accuracy_ci": [
+          0.4615,
+          0.712
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.2223,
+          0.4761
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.2388,
+          0.4816
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.2686,
+          0.494
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.0,
+          0.0303
+        ],
+        "zero_error_coverage_ci_method": "clopper-pearson",
         "mean_conf_correct": 0.924,
         "mean_conf_wrong": 0.954,
         "distinct_confidence_values": 4,
+        "no_answer": 0,
+        "no_confidence": 0,
         "cost_usd": 0.0,
         "p50_latency_s": 13.236,
         "hard_routed_strong": 28,
@@ -400,12 +1705,45 @@
       },
       "router-described": {
         "n": 120,
+        "confidence": {
+          "known": 120,
+          "total": 120
+        },
         "accuracy": 0.775,
         "ece": 0.18,
+        "ece_equal_mass": 0.18,
+        "brier": 0.2194,
         "zero_error_coverage": 0.0,
+        "accuracy_ci": [
+          0.6721,
+          0.8705
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.0816,
+          0.289
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.0968,
+          0.2912
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.1274,
+          0.3215
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.0,
+          0.0303
+        ],
+        "zero_error_coverage_ci_method": "clopper-pearson",
         "mean_conf_correct": 0.947,
         "mean_conf_wrong": 0.981,
         "distinct_confidence_values": 3,
+        "no_answer": 0,
+        "no_confidence": 0,
         "cost_usd": 0.0,
         "p50_latency_s": 13.293,
         "hard_routed_strong": 40,
@@ -444,37 +1782,146 @@
     "datasets": {
       "email-clean": {
         "n": 200,
+        "confidence": {
+          "known": 200,
+          "total": 200
+        },
         "accuracy": 1.0,
         "ece": 0.0909,
+        "ece_equal_mass": 0.0909,
+        "brier": 0.0094,
         "zero_error_coverage": 1.0,
+        "accuracy_ci": [
+          0.9817,
+          1.0
+        ],
+        "accuracy_ci_method": "clopper-pearson",
+        "ece_ci": [
+          0.0858,
+          0.096
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.0858,
+          0.096
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.0086,
+          0.0103
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.9817,
+          1.0
+        ],
+        "zero_error_coverage_ci_method": "clopper-pearson",
         "mean_conf_correct": 0.909,
         "mean_conf_wrong": null,
         "distinct_confidence_values": 4,
+        "no_answer": 0,
+        "no_confidence": 0,
         "cost_usd": 0.0397,
         "p50_latency_s": 0.805
       },
       "email-adversarial": {
         "n": 200,
+        "confidence": {
+          "known": 200,
+          "total": 200
+        },
         "accuracy": 0.905,
         "ece": 0.0155,
+        "ece_equal_mass": 0.1325,
+        "brier": 0.085,
         "zero_error_coverage": 0.0,
+        "accuracy_ci": [
+          0.8614,
+          0.945
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.0052,
+          0.0598
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.1028,
+          0.1741
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.051,
+          0.1213
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.0,
+          0.0183
+        ],
+        "zero_error_coverage_ci_method": "clopper-pearson",
         "mean_conf_correct": 0.899,
         "mean_conf_wrong": 0.821,
         "distinct_confidence_values": 6,
+        "no_answer": 0,
+        "no_confidence": 0,
         "cost_usd": 0.0411,
         "p50_latency_s": 0.811,
         "prompt_injection_accuracy": 0.625,
+        "prompt_injection_accuracy_ci": [
+          0.45,
+          0.775
+        ],
+        "prompt_injection_accuracy_ci_method": "bootstrap",
         "confidence_drop_under_injection": 0.058,
-        "social_engineering_accuracy": 0.9
+        "social_engineering_accuracy": 0.9,
+        "social_engineering_accuracy_ci": [
+          0.7,
+          1.0
+        ],
+        "social_engineering_accuracy_ci_method": "bootstrap"
       },
       "router-bare": {
         "n": 120,
+        "confidence": {
+          "known": 120,
+          "total": 120
+        },
         "accuracy": 0.65,
         "ece": 0.2333,
+        "ece_equal_mass": 0.2367,
+        "brier": 0.3173,
         "zero_error_coverage": 0.0,
+        "accuracy_ci": [
+          0.5167,
+          0.7669
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.1331,
+          0.3741
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.1554,
+          0.3877
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.2221,
+          0.4291
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.0,
+          0.0303
+        ],
+        "zero_error_coverage_ci_method": "clopper-pearson",
         "mean_conf_correct": 0.86,
         "mean_conf_wrong": 0.926,
         "distinct_confidence_values": 3,
+        "no_answer": 0,
+        "no_confidence": 0,
         "cost_usd": 0.0258,
         "p50_latency_s": 0.795,
         "hard_routed_strong": 29,
@@ -487,12 +1934,45 @@
       },
       "router-described": {
         "n": 120,
+        "confidence": {
+          "known": 120,
+          "total": 120
+        },
         "accuracy": 0.8667,
         "ece": 0.0433,
-        "zero_error_coverage": 0.0083,
+        "ece_equal_mass": 0.1933,
+        "brier": 0.1347,
+        "zero_error_coverage": 0.0,
+        "accuracy_ci": [
+          0.7845,
+          0.9339
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.0073,
+          0.1308
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.1384,
+          0.2664
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.0728,
+          0.2109
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.0,
+          0.0303
+        ],
+        "zero_error_coverage_ci_method": "clopper-pearson",
         "mean_conf_correct": 0.901,
         "mean_conf_wrong": 0.969,
         "distinct_confidence_values": 3,
+        "no_answer": 0,
+        "no_confidence": 0,
         "cost_usd": 0.0314,
         "p50_latency_s": 0.808,
         "hard_routed_strong": 40,
@@ -528,37 +2008,146 @@
     "datasets": {
       "email-clean": {
         "n": 200,
+        "confidence": {
+          "known": 200,
+          "total": 200
+        },
         "accuracy": 0.9,
         "ece": 0.034,
-        "zero_error_coverage": 0.055,
+        "ece_equal_mass": 0.034,
+        "brier": 0.0892,
+        "zero_error_coverage": 0.0,
+        "accuracy_ci": [
+          0.7783,
+          1.0
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.0245,
+          0.1431
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.0245,
+          0.1431
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.0182,
+          0.1743
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.0,
+          1.0
+        ],
+        "zero_error_coverage_ci_method": "bootstrap",
         "mean_conf_correct": 0.868,
         "mean_conf_wrong": 0.845,
         "distinct_confidence_values": 2,
+        "no_answer": 0,
+        "no_confidence": 0,
         "cost_usd": 0.0,
         "p50_latency_s": 0.703
       },
       "email-adversarial": {
         "n": 200,
+        "confidence": {
+          "known": 200,
+          "total": 200
+        },
         "accuracy": 0.725,
         "ece": 0.154,
+        "ece_equal_mass": 0.154,
+        "brier": 0.2411,
         "zero_error_coverage": 0.0,
+        "accuracy_ci": [
+          0.6517,
+          0.7969
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.085,
+          0.2307
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.09,
+          0.2307
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.1822,
+          0.2993
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.0,
+          0.0183
+        ],
+        "zero_error_coverage_ci_method": "clopper-pearson",
         "mean_conf_correct": 0.869,
         "mean_conf_wrong": 0.905,
         "distinct_confidence_values": 3,
+        "no_answer": 0,
+        "no_confidence": 0,
         "cost_usd": 0.0,
         "p50_latency_s": 0.747,
         "prompt_injection_accuracy": 0.675,
+        "prompt_injection_accuracy_ci": [
+          0.525,
+          0.825
+        ],
+        "prompt_injection_accuracy_ci_method": "bootstrap",
         "confidence_drop_under_injection": -0.026,
-        "social_engineering_accuracy": 0.0
+        "social_engineering_accuracy": 0.0,
+        "social_engineering_accuracy_ci": [
+          0.0,
+          0.1684
+        ],
+        "social_engineering_accuracy_ci_method": "clopper-pearson"
       },
       "router-bare": {
         "n": 120,
+        "confidence": {
+          "known": 120,
+          "total": 120
+        },
         "accuracy": 0.6583,
         "ece": 0.3958,
-        "zero_error_coverage": 0.025,
+        "ece_equal_mass": 0.3958,
+        "brier": 0.3688,
+        "zero_error_coverage": 0.0,
+        "accuracy_ci": [
+          0.5159,
+          0.7925
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.2614,
+          0.5287
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.2614,
+          0.5287
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.238,
+          0.5044
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.0,
+          0.0303
+        ],
+        "zero_error_coverage_ci_method": "clopper-pearson",
         "mean_conf_correct": 0.918,
         "mean_conf_wrong": 1.0,
         "distinct_confidence_values": 2,
+        "no_answer": 0,
+        "no_confidence": 0,
         "cost_usd": 0.0,
         "p50_latency_s": 0.749,
         "hard_routed_strong": 0,
@@ -571,12 +2160,45 @@
       },
       "router-described": {
         "n": 120,
+        "confidence": {
+          "known": 120,
+          "total": 120
+        },
         "accuracy": 0.5917,
         "ece": 0.4292,
-        "zero_error_coverage": 0.025,
+        "ece_equal_mass": 0.4292,
+        "brier": 0.4188,
+        "zero_error_coverage": 0.0,
+        "accuracy_ci": [
+          0.4553,
+          0.7302
+        ],
+        "accuracy_ci_method": "bootstrap",
+        "ece_ci": [
+          0.2939,
+          0.5691
+        ],
+        "ece_ci_method": "bootstrap",
+        "ece_equal_mass_ci": [
+          0.2939,
+          0.5691
+        ],
+        "ece_equal_mass_ci_method": "bootstrap",
+        "brier_ci": [
+          0.2817,
+          0.5553
+        ],
+        "brier_ci_method": "bootstrap",
+        "zero_error_coverage_ci": [
+          0.0,
+          0.0303
+        ],
+        "zero_error_coverage_ci_method": "clopper-pearson",
         "mean_conf_correct": 0.965,
         "mean_conf_wrong": 1.0,
         "distinct_confidence_values": 2,
+        "no_answer": 0,
+        "no_confidence": 0,
         "cost_usd": 0.0,
         "p50_latency_s": 0.877,
         "hard_routed_strong": 0,
