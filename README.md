@@ -23,7 +23,7 @@ Teams are shipping judgment models — TypeSafe's Jev, LLM-as-judge, guardrails,
   <img alt="200 emails under attack: the share of decisions each judge lets you automate with zero observed errors, with 95 % intervals. Jev 73 % [67.0, 94.0] is separated from Gemini 3 Flash, Llama 3.3 70B, DeepSeek R1, gemma4 and llama3.2 (0 %, exact upper bound 1.8 %) and from DeBERTa NLI (8 % [3.9, 16.0]) below it, and from DeBERTa fine-tuned run 1 (97 % [94.4, 99.0]) above it; it is not separated from Claude Sonnet 4.5 (0 %, interval up to 90.9 %), DeBERTa fine-tuned run 2 or DeBERTa fine-tuned run 2+TS." src="docs/assets/hero-arena.png">
 </picture>
 
-**Read this chart with its limits.** Every dataset here is synthetic ground truth by construction ([GT-1](docs/ground-truth.md)), n is small (200 emails, 189 distinct texts: the generator repeats some), and each judge ran once. The whiskers are 95 % intervals. Jev's 73 % [67.0, 94.0] is separated from Gemini 3 Flash, Llama 3.3 70B, DeepSeek R1, gemma4 and llama3.2 (0 %, exact upper bound 1.8 %) and from DeBERTa NLI (8 % [3.9, 16.0]) below it, and from DeBERTa fine-tuned run 1 (97 % [94.4, 99.0]) above it; it is **not** separated from Claude Sonnet 4.5 (0 %, interval up to 90.9 %), DeBERTa fine-tuned run 2 or DeBERTa fine-tuned run 2+TS. The fine-tuned runs were trained on the other half of the same generator's clean emails, so their lead is evidence about this generator. None of it is evidence of how a judge behaves on your traffic.
+**Read this chart with its limits.** Every dataset here is synthetic ground truth by construction ([GT-1](docs/ground-truth.md)), n is small (200 emails, 189 distinct texts: the generator repeats some), and each judge ran once. The whiskers are 95 % intervals. Jev's 73 % [67.0, 94.0] is separated from Gemini 3 Flash, Llama 3.3 70B, DeepSeek R1, gemma4 and llama3.2 (0 %, exact upper bound 1.8 %) and from DeBERTa NLI (8 % [3.9, 16.0]) below it, and from DeBERTa fine-tuned run 1 (97 % [94.4, 99.0]) above it; it is **not** separated from Claude Sonnet 4.5 (0 %, interval up to 90.9 %), DeBERTa fine-tuned run 2 or DeBERTa fine-tuned run 2+TS. The fine-tuned runs were trained on the other half of the same generator's clean emails, so their lead is evidence about this generator. Two robustness checks back the Jev–Gemini gap: it is separated in each of three pre-registered repeat runs ([repeat runs](docs/repeats-2026-09.md), where Sonnet's interval turns out to move between runs) and on one row per distinct text ([robustness check](docs/robustness-distinct-2026-09.md)). None of it is evidence of how a judge behaves on your traffic.
 
 ![judge-audit run on a labeled dataset, then the CI gate](docs/demo.gif)
 
@@ -112,7 +112,7 @@ Exit codes: `0` ok · `1` drift detected · `2` usage or configuration error (th
 **In CI:** the [GitHub Action](docs/integrations.md#github-action) runs the audit on every push or pull request and fails the build on drift:
 
 ```yaml
-- uses: kunko-ai-labs/judge-audit@v0.4      # resolves once v0.4.0 is tagged; or pin a release's commit SHA
+- uses: kunko-ai-labs/judge-audit@v0.4      # or pin the release's commit SHA
   with: { labels: audits/labels.jsonl, judge: jev, baseline: audits/baseline.json }
   env: { AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }} }
 ```
@@ -154,7 +154,7 @@ Accuracy tells you who wins a benchmark. Calibration tells you what you can auto
 
 ## Roadmap
 
-Score questions + MCE (maximum calibration error: the worst bin, not the average — our proposal for AI Act evidence, not a legal requirement) → Judge Arena as a living leaderboard with a submission spec (the first table is above) → AI Act evidence dossier. Details and reasons in [docs/ROADMAP.md](docs/ROADMAP.md); the live backlog is the issues.
+v0.5: a benchmark on real data — human-labelled public datasets with ≥ 1,000 rows per task and a hidden held-out slice, current models including OpenAI's, confidence measured three ways (verbalized, token log-probability, self-consistency), repeats for every judge, all pre-registered — plus MCE (the worst bin, not the average; our proposal for AI Act evidence, not a legal requirement) → v0.6: a public leaderboard with a submission spec and the AI Act evidence dossier. Details and reasons in [docs/ROADMAP.md](docs/ROADMAP.md); the live backlog is the issues.
 
 ## FAQ
 
