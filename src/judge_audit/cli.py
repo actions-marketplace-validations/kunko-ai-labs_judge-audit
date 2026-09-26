@@ -125,7 +125,8 @@ def _audit(judge, rows: list[dict], args, dataset_meta: dict):
 
 def main(argv: list[str] | None = None) -> None:
     args = _parser().parse_args(argv)
-    rows, dataset_meta = [], {}
+    rows: list[dict] = []
+    dataset_meta: dict = {}
     try:
         rows, dataset_meta = load_dataset(args.labels)
     except (OSError, ValueError) as e:
@@ -170,6 +171,8 @@ def main(argv: list[str] | None = None) -> None:
               f"ece_equal_mass={fmt4(result.ece_equal_mass)}"
               f"{interval(result.ece_equal_mass_ci)} "
               f"brier={fmt4(result.brier)}{interval(result.brier_ci)} "
+              f"nll={'inf' if result.nll_infinite else fmt4(result.nll)}"
+              f"{interval(result.nll_ci)} "
               f"gt={ground_truth_of(result.run).tier} "
               f"cost={cost} -> {out}")
     else:

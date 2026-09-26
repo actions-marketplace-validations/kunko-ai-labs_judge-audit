@@ -25,6 +25,10 @@ from .metrics.calibration import (
     ci_fields,
     ece_ci,
     expected_calibration_error,
+    interpolated_quantile,
+    negative_log_likelihood,
+    nll_ci,
+    nll_infinite,
     reliability_bins,
     zero_error_coverage,
     zero_error_coverage_ci,
@@ -49,6 +53,8 @@ class AuditResult:
     total_cost_usd: float | None = 0.0
     p50_latency_s: float = 0.0
     p99_latency_s: float = 0.0
+    # The slowest call, printed next to the p99: with n=200 a p99 hides one or two stalls.
+    max_latency_s: float = 0.0
     run: dict = field(default_factory=dict)
     # When a committed report was rebuilt from its checkpoint by a later version: its own
     # time, version and script. Kept apart from `run`, which is what the run itself said.
@@ -67,6 +73,11 @@ class AuditResult:
     ece_equal_mass_ci: Interval | None = None
     brier_ci: Interval | None = None
     confidence: dict = field(default_factory=dict)
+    # Log loss (top-label, never clipped; docs/judges.md): None when infinite, and
+    # `nll_infinite` counts the answers declared certain and wrong that make it so.
+    nll: float | None = None
+    nll_ci: Interval | None = None
+    nll_infinite: int = 0
     # Expected (row, question) pairs vs what the judge answered; empty for a report rebuilt
     # from a checkpoint, where `scripts/audit_resumable.py` enforces the same rule.
     completeness: dict = field(default_factory=dict)
@@ -76,12 +87,14 @@ class AuditResult:
             "judge": self.judge, "n": self.n, "accuracy": self.accuracy,
             "confidence": self.confidence,
             "ece": self.ece, "ece_equal_mass": self.ece_equal_mass, "brier": self.brier,
+            "nll": self.nll, "nll_infinite": self.nll_infinite,
             "reliability_bins": self.reliability,
             "accuracy_coverage": self.curve, "zero_error_coverage": self.zero_error,
             "total_cost_usd": (round(self.total_cost_usd, 6)
                                if self.total_cost_usd is not None else None),
             "p50_latency_s": round(self.p50_latency_s, 3),
             "p99_latency_s": round(self.p99_latency_s, 3),
+            "max_latency_s": round(self.max_latency_s, 3),
             "run": self.run,
         }
         if self.accuracy_ci is not None:
@@ -89,6 +102,7 @@ class AuditResult:
                      **ci_fields("ece", self.ece_ci, self.ece),
                      **ci_fields("ece_equal_mass", self.ece_equal_mass_ci, self.ece_equal_mass),
                      **ci_fields("brier", self.brier_ci, self.brier),
+                     **ci_fields("nll", self.nll_ci, self.nll),
                      **ci_fields("zero_error_coverage", self.zero_error_coverage_ci,
                                  self.zero_error.get("coverage")),
                      bootstrap=dict(BOOTSTRAP))
@@ -100,10 +114,12 @@ class AuditResult:
 
 
 def _percentile(xs: list[float], p: float) -> float:
+    """p-th percentile (0..100) of the latencies: linear interpolation between order
+    statistics (Hyndman–Fan type 7 — numpy's default, `statistics.quantiles` inclusive),
+    the same rule as the bootstrap's interval cut. 0.0 for no rows."""
     if not xs:
         return 0.0
-    s = sorted(xs)
-    return s[min(int(p / 100 * len(s)), len(s) - 1)]
+    return interpolated_quantile(sorted(xs), p / 100)
 
 
 def questions_of(row: dict) -> list[Question]:
@@ -305,15 +321,16 @@ def summarize(judge_name: str, records: list[dict], run: dict | None = None,
     cluster, which overstates precision on a dataset with repeated texts."""
     total = len(records)
     hits = sum(bool(r["correct"]) for r in records)
-    known_idx = [i for i, r in enumerate(records)
-                 if clamp_confidence(r.get("confidence")) is not None]
-    confidences = [clamp_confidence(records[i]["confidence"]) for i in known_idx]
+    declared = [clamp_confidence(r.get("confidence")) for r in records]
+    known_idx = [i for i, c in enumerate(declared) if c is not None]
+    confidences: list[float] = [c for c in declared if c is not None]
     correct = [bool(records[i]["correct"]) for i in known_idx]
     known_groups = [groups[i] for i in known_idx] if groups is not None else None
     # a skipped question has no latency (None): it is left out, not counted as instant
     latencies = [lat for lat in (r.get("latency_s", 0.0) for r in records) if lat is not None]
     costs = [r.get("cost_usd") for r in records]
-    total_cost = None if any(cost is None for cost in costs) else math.fsum(costs)
+    total_cost = (None if any(cost is None for cost in costs)
+                  else math.fsum(cost for cost in costs if cost is not None))
     known = len(confidences)
     if ci is None:
         ci = bootstrap_enabled()
@@ -329,6 +346,7 @@ def summarize(judge_name: str, records: list[dict], run: dict | None = None,
         total_cost_usd=total_cost,
         p50_latency_s=_percentile(latencies, 50),
         p99_latency_s=_percentile(latencies, 99),
+        max_latency_s=max(latencies, default=0.0),
         run=run or {},
         accuracy_ci=accuracy_ci([bool(r["correct"]) for r in records], groups=groups)
         if ci and total else None,
@@ -343,6 +361,10 @@ def summarize(judge_name: str, records: list[dict], run: dict | None = None,
         ece_equal_mass_ci=(ece_ci(confidences, correct, groups=known_groups,
                                   binning=EQUAL_MASS) if ci and known else None),
         brier_ci=brier_ci(confidences, correct, groups=known_groups) if ci and known else None,
+        nll=(round(negative_log_likelihood(confidences, correct), 4)
+             if known and not nll_infinite(confidences, correct) else None),
+        nll_ci=nll_ci(confidences, correct, groups=known_groups) if ci and known else None,
+        nll_infinite=nll_infinite(confidences, correct),
     )
 
 
@@ -505,7 +527,7 @@ def read_dataset_header(path: str) -> dict:
         obj = json.loads(first) if first.strip() else None
     except ValueError:
         return {}
-    return _validate_header(obj, path) if _is_header(obj) else {}
+    return _validate_header(obj, path) if isinstance(obj, dict) and _is_header(obj) else {}
 
 
 def load_dataset(path: str) -> tuple[list[dict], dict]:
