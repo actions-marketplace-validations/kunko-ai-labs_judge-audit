@@ -104,6 +104,15 @@ def provenance_lines(run: dict) -> list[str]:
     if run.get("judge_audit_version"):
         parts.append(f"judge-audit {run['judge_audit_version']}")
     lines = ["_" + " · ".join(parts) + "_"]
+    served = run.get("served")
+    if served:
+        versions = ", ".join(
+            f"`{v.get('model') or '?'}`"
+            + (f" (fingerprint `{v['system_fingerprint']}`)" if v.get("system_fingerprint") else "")
+            + f" × {v['decisions']} decisions" for v in served.get("versions", []))
+        lines.append(f"_served as reported by the provider: {versions or 'no version reported'}"
+                     + (f" · {served['decisions_without_version']} decisions without a version"
+                        if served.get("decisions_without_version") else "") + "_")
     if ds.get("path"):
         lines.append(f"_dataset `{ds.get('path')}` · {ds.get('rows')} rows · "
                      f"sha256 `{str(ds.get('sha256', ''))[:12]}…`_")
@@ -397,6 +406,19 @@ def check_drift(current: AuditResult, baseline_path: str,
             f"the judge's prompt changed since the baseline (prompt_sha256 "
             f"{base_prompt[:12]}… → {cur_prompt[:12]}…): the numbers below compare two "
             "different questions.", UserWarning, stacklevel=2)
+
+    def versions(run: dict | None) -> set[str]:
+        return {f"{v.get('model') or '?'}"
+                + (f" (fp {v['system_fingerprint']})" if v.get("system_fingerprint") else "")
+                for v in ((run or {}).get("served") or {}).get("versions", [])}
+
+    cur_served, base_served = versions(current.run), versions(base.get("run"))
+    if cur_served and base_served and cur_served != base_served:
+        warnings.warn(
+            f"the provider served a different model version or backend fingerprint than "
+            f"in the baseline ({', '.join(sorted(base_served))} → "
+            f"{', '.join(sorted(cur_served))}): a drift below may be the provider's, not "
+            "the judge configuration's.", UserWarning, stacklevel=2)
 
     base = {**base, "ece": base_ece, "accuracy": base_acc}
     failures = []

@@ -368,6 +368,31 @@ def summarize(judge_name: str, records: list[dict], run: dict | None = None,
     )
 
 
+def served_versions(records: list[dict]) -> dict | None:
+    """The model versions the provider reported serving, over a run's decisions: each
+    distinct {model, system_fingerprint} and how many decisions it answered, plus how many
+    came back without one. None when the adapter records nothing (older checkpoints,
+    local judges), so a report rebuilt from them is unchanged."""
+    raws: list[dict] = [r["raw"] if isinstance(r.get("raw"), dict) else {} for r in records]
+    if not any("served" in raw for raw in raws):
+        return None
+    seen: dict[str, int] = {}
+    without = 0
+    for raw in raws:
+        # once a run records versions, a row without the key (a checkpoint resumed across
+        # the upgrade) is a decision without a version, not a decision that vanishes
+        s = raw.get("served") or {}
+        if not any(s.values()):
+            without += 1
+            continue
+        key = json.dumps(s, sort_keys=True)
+        seen[key] = seen.get(key, 0) + 1
+    if not seen and not without:
+        return None
+    return {"versions": [{**json.loads(k), "decisions": n} for k, n in sorted(seen.items())],
+            "decisions_without_version": without}
+
+
 def record_of(idx: int, row: dict, judgment, expected: str) -> dict:
     confidence = clamp_confidence(judgment.confidence)
     status = judgment.parse_status
@@ -484,6 +509,9 @@ def run_audit(judge: Judge, rows: list[dict], labels_path: str | None = None,
                        run_metadata(judge, labels_path, len(rows), dataset_meta), ci=ci,
                        groups=groups_of(records, rows))
     result.completeness = counts
+    served = served_versions(records)
+    if served:
+        result.run["served"] = served
     return result
 
 
