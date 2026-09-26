@@ -88,6 +88,12 @@ Register it in `src/judge_audit/cli.py` (`JUDGES` + `_judge`), add a test with t
 
 `judge-audit-mcp` exposes the same engine to any MCP client (`run_audit`, `check_drift`, `list_judges`), so an agent can audit the judge it is about to rely on from inside its own session. Setup for Claude Code and Cursor in [integrations.md](integrations.md).
 
+## Gateways, extra request fields, and a log-probability smoke test
+
+An OpenAI-compatible gateway can serve a model through more than one upstream. `LLM_EXTRA_BODY` takes the gateway's routing object, and only that: a JSON object whose keys are `provider` or `providerOptions`, by exact name, for instance one that pins the upstream and forbids falling back to another. Any other field is refused, because the model, the messages, sampling, token limits, a fallback model list and prompt transforms are fixed by the adapter and recorded in provenance, and a server that reads keys case-insensitively must not receive a second `Temperature` behind them. The object is recorded in the run's provenance (`extra_body`). When it pins upstreams (`order` or `only`), the upstream the gateway reports serving each decision is kept (`raw.upstream_provider`) if it is one of them, and the decision fails if it is not: the routing the provenance records did not hold. Without routing fields nothing about a run changes; the endpoint itself is recorded as `base_url`, as for every OpenAI-compatible run. A checkpoint is not resumed with different routing fields.
+
+`python scripts/logprob_smoke.py --model <id>` asks an endpoint once, with `logprobs` and `top_logprobs` set, to answer a one-word classification, and reports what came back: the served model, the answer, the answer token and its probability. Exit 0 means numeric log-probabilities came back for that plain request; whether they also come back for a judge's own request, with its system prompt and JSON mode, is checked in that run. Exit 1 means none came back (unsupported, or silently ignored), 2 that the call failed or the reply was not a chat completion, 3 that something came back under `logprobs` in a shape the script does not read. It reads the key from `LLM_API_KEY` and removes every occurrence of it from what it prints or writes, including an error body or a field that echoes the request's headers.
+
 ## Token budgets and unparseable replies
 
 A reply the adapter cannot parse counts as a wrong, zero-confidence decision — the house rule — and the raw text is kept in the checkpoint. Two causes seen in the Arena, and what to do about them:
