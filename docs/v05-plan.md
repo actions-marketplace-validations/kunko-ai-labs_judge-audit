@@ -121,7 +121,17 @@ Stated with the numbers: in the tied H1-sc cells the modelled gap is +0.003 to +
 
 ## 11. Deviations
 
-Dated amendments, committed before the call they govern. None yet.
+Dated amendments, committed before the call they govern.
+
+**Amendment 1 (2026-10-01, approved by the maintainer; before any log-probability study call).** The study's first `logprob_selfcheck.py` (as frozen: trimmed cache against a full forward pass per option, tolerance 1e-3 in probability) failed on BANKING77 test rows 0–4: largest probability difference 0.051, one decision changed. §10 held every log-probability run; the other runs continued. The check showed the model's decisions on those 5 test rows; nothing else was looked at.
+
+*Diagnosis* (same rows; `docs/runs/v05/logprob-selfcheck-diagnosis.txt`): the trimmed cache and a fresh cache per option agree **exactly** (0 on every option of every row), so the cache trimming the frozen check was written to guard (an open mlx-lm report) is not at fault. The full forward pass reaches the logits by another kernel path: four rows agree within 1.1e-6; one near-tie row moves (trimmed: two options at 0.3924 each, decided by the option order as the decision rule says; full: 0.4434 against 0.3453). That move is ln(0.4434/0.3453) = 0.25 in log-odds, **exactly one bfloat16 step** at logit magnitudes of 32–64 (bfloat16 keeps 8 significant bits), and the trimmed path's exact tie is itself a sign of that grid. A real prefill-versus-incremental bug (a mask or offset error) would touch every row, not one, and not by a power of two; prompt length does not explain it (a longer row agrees to 2.5e-9). Both paths are the model's bfloat16 arithmetic; neither is exact. Whether the pilot's 5 rows held a near-tie is not known (its check printed no per-row output); they passed (3.9e-7).
+
+*What changes* ([#118](https://github.com/kunko-ai-labs/judge-audit/pull/118)):
+- **The gate is now two-part.** (a) Trimmed cache = fresh cache per option: raw log-probabilities within 1e-3, no decision changed. (b) A loose bound on the full forward pass: the largest log-odds shift over options both paths give at least 1 % stays at or below 1.0 (four bfloat16 steps at logit magnitudes 32–64), and no decision changes where the trimmed path's top-two margin exceeds 1.0. **This narrows the frozen check:** a bug shared by both cache paths that moves log-odds by less than 1.0, or flips only near-ties, would now pass; the only exact guard against it is the CI test that compares the cached path with a hand-written full pass on a float32 tiny model (1e-4).
+- **A near-tie** is a decision whose top-two log-odds margin in the trimmed path is at most 0.5 (two bfloat16 steps).
+- **Reported with every log-probability result:** the full-pass spread printed by the passing amended check (`docs/runs/v05/logprob-selfcheck.txt`, its rows and figures quoted), the count of near-tie decisions in the run, and that a near-tie's decision and confidence are unstable at that scale.
+- **Nothing else changes:** the same judge, model, revision, prompt, decision rule and confidence. T1, T2 and E1/E2's log-probability runs resume once the amended check passes.
 
 ## 12. Before the freeze
 
