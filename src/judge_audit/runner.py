@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .certificate import DEFAULT_TARGETS, PRIMARY_TARGET, automation_certificate
 from .ground_truth import parse_ground_truth
 from .judges.base import Judge, Question, QuestionType
 from .metrics.calibration import (
@@ -81,6 +82,9 @@ class AuditResult:
     # Expected (row, question) pairs vs what the judge answered; empty for a report rebuilt
     # from a checkpoint, where `scripts/audit_resumable.py` enforces the same rule.
     completeness: dict = field(default_factory=dict)
+    # How much the judge can decide alone at each target risk, the threshold to deploy and
+    # a bound on its error (certificate.py; docs/judges.md § The safe automation rate).
+    certificate: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         d = {
@@ -106,6 +110,8 @@ class AuditResult:
                      **ci_fields("zero_error_coverage", self.zero_error_coverage_ci,
                                  self.zero_error.get("coverage")),
                      bootstrap=dict(BOOTSTRAP))
+        if self.certificate:
+            d["certificate"] = self.certificate
         if self.completeness:
             d["completeness"] = self.completeness
         if self.regenerated:
@@ -317,6 +323,28 @@ def bootstrap_enabled() -> bool:
         "0", "false", "no", "off")
 
 
+def certificate_of(records: list[dict], groups: list[str] | None = None,
+                   targets: tuple[float, ...] | list[float] = DEFAULT_TARGETS,
+                   run: dict | None = None, primary: float = PRIMARY_TARGET,
+                   segment_by: str | None = "label") -> dict:
+    """`certificate.automation_certificate` (the safe automation rate) on the runner's
+    records, each confidence read as every other metric reads it (`clamp_confidence`: an
+    invalid one is unknown). Segments: the true label (`"label"`, the default), a field of
+    the row's `_meta` (`"meta.<field>"`; a row without it is `(none)`), or None."""
+    def segment(r: dict) -> str | None:
+        if segment_by is None:
+            return None
+        if segment_by == "label":
+            return str(r.get("expected", ""))
+        field_name = segment_by.removeprefix("meta.")
+        value = (r.get("meta") or {}).get(field_name)
+        return "(none)" if value is None else str(value)
+    return automation_certificate(
+        [{"question": r.get("question", ""), "confidence": clamp_confidence(r.get("confidence")),
+          "correct": r["correct"], "segment": segment(r)} for r in records],
+        groups, targets=targets, primary=primary, run=run, segment_by=segment_by)
+
+
 def summarize(judge_name: str, records: list[dict], run: dict | None = None,
               ci: bool | None = None, groups: list[str] | None = None) -> AuditResult:
     """Metrics from per-question records ({confidence, correct, latency_s, cost_usd, ...}).
@@ -370,6 +398,7 @@ def summarize(judge_name: str, records: list[dict], run: dict | None = None,
              if known and not nll_infinite(confidences, correct) else None),
         nll_ci=nll_ci(confidences, correct, groups=known_groups) if ci and known else None,
         nll_infinite=nll_infinite(confidences, correct),
+        certificate=certificate_of(records, groups, run=run),
     )
 
 
@@ -510,13 +539,12 @@ def run_audit(judge: Judge, rows: list[dict], labels_path: str | None = None,
         dataset_gaps(idx, row)
     for idx, row in enumerate(rows):
         records += reconcile(idx, row, judge.decide(row["state"], questions_of(row)), counts)
-    result = summarize(judge.name, records,
-                       run_metadata(judge, labels_path, len(rows), dataset_meta), ci=ci,
-                       groups=groups_of(records, rows))
-    result.completeness = counts
+    run = run_metadata(judge, labels_path, len(rows), dataset_meta)
     served = served_versions(records)
-    if served:
-        result.run["served"] = served
+    if served:                    # before summarize: the safe automation rate's scope names it
+        run["served"] = served
+    result = summarize(judge.name, records, run, ci=ci, groups=groups_of(records, rows))
+    result.completeness = counts
     return result
 
 
