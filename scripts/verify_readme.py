@@ -25,6 +25,7 @@ import functools
 import json
 import os
 import re
+import shutil
 import statistics
 import subprocess
 import sys
@@ -183,7 +184,7 @@ def check_jev_audits(ck: Checker, all_tables) -> None:
 
 
 def check_jev_row(ck: Checker, row: list[str], seen: list[str]) -> None:
-    report = re.search(r"\((docs/[^)]+)\)", row[-1])
+    report = re.search(r"\(((?:docs/|\.\./)[^)]+)\)", row[-1])
     name = Path(report.group(1)).name if report else ""
     if name not in JEV_AUDITS:
         ck.failures.append(f"Jev audits: unknown report link in row {row[0]!r}")
@@ -398,7 +399,8 @@ def check_hero(ck: Checker, md: str) -> None:
     """The hero chart's caption and alt text: their figures, and which gaps the 95 %
     intervals separate — read from the prose, recomputed from the JSON."""
     m = re.search(r"\*\*Read this chart with its limits\.\*\*(.+)", md)
-    alt = re.search(r'<img alt="(200 emails under attack[^"]+)" src="docs/assets/hero-arena', md)
+    alt = re.search(r'<img alt="(200 emails under attack[^"]+)" src="(?:docs/|\.\./)assets/hero-arena',
+                    md)
     if not m or not alt:
         ck.failures.append("hero chart: caption or alt text not found")
         return
@@ -624,7 +626,7 @@ def v05_expected(d: dict) -> dict[str, list[str]]:
         "A pre-registered study": [
             f"BANKING77 test ({n_b:,} rows) and a CLINC150 subset ({n_c:,} rows)",
             f"the {len(strict)} confirmatory tests and their predictions were frozen",
-            "[docs/v05-plan.md](docs/v05-plan.md)", "[docs/v05-results.md](docs/v05-results.md)",
+            "[docs/v05-plan.md](../v05-plan.md)", "[docs/v05-results.md](../v05-results.md)",
             f"a test is resolved only at Holm-adjusted p below {alpha} with the predicted sign",
         ],
         "**Pre-registered confirmatory tests.**": [
@@ -677,6 +679,103 @@ def v05_expected(d: dict) -> dict[str, list[str]]:
     }
 
 
+GLANCE_ROWS = {"Jev, native probability": "jev",
+               "gemini-3.6-flash, verbalized": "llm-gemini-3.6-flash",
+               "Qwen3-8B, token log-probability": "logprob-qwen3-8b"}
+GLANCE_HEAD = ("| Judge and confidence | Decides alone at ≤ 5 % error | Range over split seeds | "
+               "At ≤ 10 % error |")
+
+
+def check_v05_glance(ck: Checker, md: str) -> None:
+    """The "At a glance" table of the v0.5 findings: one row per run, every cell rebuilt from
+    docs/v05-results.json (the pooled cross-fit rate at 5 %, its spread over split seeds, the
+    rate at 10 %), and the caption's row count."""
+    d = load("v05-results.json")
+    m = d["metrics"]
+    cap = re.search(r"\*\*At a glance: BANKING77, ([\d,]+) human-labelled banking queries, decided "
+                    r"alone at an error of at most (\d+) %\.\*\*", md)
+    ck.eq("v0.5 at a glance / rows", cap and cap.group(1), f"{m['banking77/jev']['strict']['n']:,}")
+    ck.eq("v0.5 at a glance / caption target", cap and cap.group(2), "5")
+    if GLANCE_HEAD not in md:
+        ck.failures.append("v0.5 at a glance: the table is missing")
+        return
+    table = md.split(GLANCE_HEAD, 1)[1].split("\n\n", 1)[0]
+    rows = [cells(line) for line in table.splitlines() if line.startswith("| ") and "---" not in line]
+    seen = [r[0] for r in rows]
+    for label, run in GLANCE_ROWS.items():
+        ck.checked += 1
+        if seen.count(label) != 1:
+            ck.failures.append(f"v0.5 at a glance: row {label!r} appears {seen.count(label)} times")
+            continue
+        r = rows[seen.index(label)]
+        if len(r) != 4:
+            ck.failures.append(f"v0.5 at a glance: row {label!r} has {len(r)} cells, not 4")
+            continue
+        c = m[f"banking77/{run}"]["strict"]["certification"]
+        five, ten = c["0.05"]["pooled"], c["0.1"]["pooled"]
+        lo, hi = c["0.05"]["spread_coverage"]
+        want = [f"**{_pc(five['coverage']) if five['covered'] else 'none'}**",
+                f"{lo * 100:.1f}–{hi * 100:.1f} %",
+                _pc(ten["coverage"]) if ten["covered"] else "none"]
+        for where, got, exp in zip(("at 5 %", "spread", "at 10 %"), r[1:4], want, strict=True):
+            ck.eq(f"v0.5 at a glance / {label} / {where}", got, exp)
+    for extra in set(seen) - set(GLANCE_ROWS):
+        ck.failures.append(f"v0.5 at a glance: unknown row {extra!r}")
+
+
+def check_demo_figures(ck: Checker) -> None:
+    """docs/demo.gif is cut from the launch video; the figures it shows are listed in
+    docs/assets/demo-figures.json, checked here against docs/v05-results.json and a fresh
+    seeded simulated run and check (the same commands the video shows)."""
+    f = ROOT / "docs/assets/demo-figures.json"
+    if not f.exists():
+        ck.failures.append("demo: docs/assets/demo-figures.json is missing")
+        return
+    demo = json.loads(f.read_text(encoding="utf-8"))
+    m = load("v05-results.json")["metrics"]
+    b = demo["banking77"]
+    ck.eq("demo / BANKING77 rows", b["rows"], m["banking77/jev"]["strict"]["n"])
+    ck.eq("demo / target", b["target"], 0.05)
+    for run, shown in b["runs"].items():
+        c = m[f"banking77/{run}"]["strict"]["certification"]["0.05"]
+        cov = c["pooled"]["coverage"] if c["pooled"]["covered"] else None
+        ck.eq(f"demo / {run} / rate at 5 %", shown["coverage_at_5pct"], cov)
+        ck.eq(f"demo / {run} / spread", shown["spread_over_split_seeds"], c["spread_coverage"])
+    sim = demo["simulated"]
+    ck.eq("demo / run command", sim["command_run"], DEMO_RUN)
+    ck.eq("demo / check command", sim["command_check"], DEMO_CHECK)
+    line = simulated_line("0.10")
+    for key, label in (("n", "n="), ("accuracy", "accuracy="),
+                       ("safe_automation_at_10pct", "safe_automation@10%=")):
+        found = re.search(re.escape(label) + r"([\d.]+%?)", line)
+        ck.eq(f"demo / simulated / {key}", str(sim[key]), found and found.group(1))
+    code, text = demo_check()
+    ck.eq("demo / simulated / check exit", sim["check_exit"], code)
+    ck.checked += 1
+    if f"(minimum {sim['minimum']})" not in text:
+        ck.failures.append(f"demo / simulated / minimum: {sim['minimum']} not in the check output")
+
+
+DEMO_RUN = "judge-audit run labels.jsonl --judge simulated --target 0.10"
+DEMO_CHECK = ("judge-audit check labels.jsonl --judge simulated --baseline audit-result.json "
+              "--min-safe-rate 0.10:0.70")
+
+
+@functools.cache
+def demo_check() -> tuple[int, str]:
+    """The video's two commands, exactly as shown, in a directory holding the email-routing
+    labels as labels.jsonl: the exit code and output of the `check`."""
+    env = {**os.environ, "PYTHONPATH": os.pathsep.join(
+        [str(ROOT / "src"), os.environ.get("PYTHONPATH", "")])}
+    with tempfile.TemporaryDirectory() as tmp:
+        shutil.copy(ROOT / "examples/email-routing/labels.jsonl", Path(tmp) / "labels.jsonl")
+        for cmd, check in ((DEMO_RUN, True), (DEMO_CHECK, False)):
+            out = subprocess.run([sys.executable, "-m", "judge_audit.cli", *cmd.split()[1:]],
+                                 cwd=tmp, env=env, capture_output=True, text=True,
+                                 check=check, timeout=120)
+    return out.returncode, out.stdout + out.stderr
+
+
 def paragraph(md: str, opening: str) -> list[str]:
     return [p for p in md.split("\n\n") if p.startswith(opening)]
 
@@ -684,11 +783,14 @@ def paragraph(md: str, opening: str) -> list[str]:
 def check_v05(ck: Checker, md: str) -> None:
     """Every sentence with a v0.5 figure or verdict, rebuilt from the JSON: word for word, once
     in the README, inside its own paragraph (so its caveats travel with it)."""
-    section = md.split("## v0.5 findings", 1)
-    if len(section) != 2:
+    # the summary sits in the README, the detail in docs/results/v0.5.md: every section whose
+    # heading starts "## v0.5 findings" is read as one body
+    parts = md.split("\n## v0.5 findings")[1:] or (
+        [md.split("## v0.5 findings", 1)[1]] if md.startswith("## v0.5 findings") else [])
+    if not parts:
         ck.failures.append("v0.5 findings: the section is missing")
         return
-    body = section[1].split("\n## ", 1)[0]
+    body = "\n\n".join(p.split("\n", 1)[1].split("\n## ", 1)[0] for p in parts)
     for opening, needed in v05_expected(load("v05-results.json")).items():
         paras = paragraph(body.lstrip("\n"), opening)
         ck.checked += 1
@@ -703,6 +805,7 @@ def check_v05(ck: Checker, md: str) -> None:
             elif (md.count(text) != 1 and re.search(r"\d", text)
                   and not text.startswith("*Caveats:*")):   # the caveat repeats by design
                 ck.failures.append(f"v0.5 findings: {text!r} appears {md.count(text)} times")
+    check_v05_glance(ck, md)
     ck.checked += 1
     if "python scripts/v05_study.py --check" not in body:
         ck.failures.append("v0.5 findings: the reproduce command is missing")
@@ -812,11 +915,20 @@ def check(md: str) -> Checker:
     check_v05(ck, md)
     check_quickstart(ck, md)
     check_gate(ck, md)
+    check_demo_figures(ck)
     return ck
 
 
+# The README and the per-version results pages it links: one text, checked as a whole.
+SOURCES = ("README.md", "docs/results/v0.5.md", "docs/results/v0.4.md")
+
+
+def corpus() -> str:
+    return "\n\n".join((ROOT / f).read_text(encoding="utf-8") for f in SOURCES)
+
+
 def main() -> None:
-    ck = check((ROOT / "README.md").read_text(encoding="utf-8"))
+    ck = check(corpus())
     for f in ck.failures:
         print(f"MISMATCH {f}")
     print(f"{ck.checked} README figures checked, {len(ck.failures)} mismatch(es)")

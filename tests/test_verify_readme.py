@@ -8,9 +8,10 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from verify_readme import ROOT, check, rounded  # noqa: E402
+import verify_readme as _vr  # noqa: E402
+from verify_readme import check, rounded  # noqa: E402
 
-README = (ROOT / "README.md").read_text(encoding="utf-8")
+README = _vr.corpus()   # the README and the per-version results pages, checked as one text
 
 
 def test_the_committed_readme_matches_its_json():
@@ -480,3 +481,60 @@ def test_no_opposite_sign_test_does_not_read_as_worse(monkeypatch):
     failures = check(README).failures
     assert any("ranked their errors no differently" in f for f in failures)
     assert not any("ranked their errors worse" in f and "in 0 of" in f for f in failures)
+
+
+@pytest.mark.parametrize(
+    "old,new",
+    [
+        ("| Jev, native probability | **41.0 %** |", "| Jev, native probability | **42.0 %** |"),
+        ("| 27.0–45.1 % | 72.3 % |", "| 27.0–46.1 % | 72.3 % |"),
+        ("| 7.6–30.0 % | 45.5 % |", "| 7.6–30.0 % | 46.5 % |"),
+        ("| Qwen3-8B, token log-probability | **none** |",
+         "| Qwen3-8B, token log-probability | **1.0 %** |"),
+        ("BANKING77, 3,080 human-labelled", "BANKING77, 3,081 human-labelled"),
+    ],
+)
+def test_the_at_a_glance_table_is_checked_cell_by_cell(old, new):
+    assert any(f.startswith("v0.5 at a glance") for f in check(edit(old, new)).failures)
+
+
+def test_a_dropped_row_of_the_at_a_glance_table_is_caught():
+    row = "| gemini-3.6-flash, verbalized | **14.3 %** | 7.6–30.0 % | 45.5 % |\n"
+    assert row in README
+    assert any("gemini-3.6-flash, verbalized" in f and "0 times" in f
+               for f in check(README.replace(row, "")).failures)
+
+
+@pytest.mark.parametrize(
+    "old,new",
+    [
+        ("| Range over split seeds | At ≤ 10 % error |",
+         "| Range over split seeds | At ≤ 20 % error |"),
+        ("decided alone at an error of at most 5 %.**",
+         "decided alone at an error of at most 10 %.**"),
+    ],
+)
+def test_the_at_a_glance_header_and_caption_are_checked(old, new):
+    assert any(f.startswith("v0.5 at a glance") for f in check(edit(old, new)).failures)
+
+
+def test_the_demo_figures_follow_the_json(monkeypatch, tmp_path):
+    import json
+
+    import verify_readme
+    src = verify_readme.ROOT / "docs/assets/demo-figures.json"
+    demo = json.loads(src.read_text(encoding="utf-8"))
+    demo["banking77"]["runs"]["jev"]["coverage_at_5pct"] = 0.42
+    fake = tmp_path / "docs/assets"
+    fake.mkdir(parents=True)
+    (fake / "demo-figures.json").write_text(json.dumps(demo), encoding="utf-8")
+    real_root = verify_readme.ROOT
+    monkeypatch.setattr(verify_readme, "ROOT", tmp_path)
+    monkeypatch.setattr(verify_readme, "load",
+                        lambda name: json.loads((real_root / "docs" / name).read_text()))
+    monkeypatch.setattr(verify_readme, "simulated_line", lambda target: (
+        "SIMULATED · judge=simulated n=200 accuracy=85.5% safe_automation@10%=65.5%"))
+    monkeypatch.setattr(verify_readme, "demo_check", lambda: (1, "(minimum 70.0%)"))
+    ck = verify_readme.Checker()
+    verify_readme.check_demo_figures(ck)
+    assert any("demo / jev / rate at 5 %" in f for f in ck.failures)
