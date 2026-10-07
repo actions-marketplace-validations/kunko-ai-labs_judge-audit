@@ -41,6 +41,7 @@ import hashlib
 import http.client
 import importlib.util
 import inspect
+import ipaddress
 import json
 import math
 import os
@@ -69,6 +70,40 @@ def _is_local_url(url: str) -> bool:
     except ValueError:
         return False
     return host in {"localhost", "127.0.0.1", "::1"}
+
+
+def _is_on_premises(url: str) -> bool:
+    """Whether an endpoint may be a server the auditor runs (this computer or its network),
+    whose system_fingerprint then describes the auditor's hardware: loopback, unspecified,
+    private and link-local addresses, `localhost`, `*.local`, `host.docker.internal` and a
+    single-label name, which only resolves on a local network. A URL whose host cannot be
+    read counts as on premises: when in doubt provenance keeps versions only."""
+    try:
+        host = (urllib.parse.urlparse(url).hostname or "").rstrip(".").lower()
+    except ValueError:
+        return True
+    if not host:
+        return True
+    if host in {"localhost", "host.docker.internal"} or host.endswith((".local", ".localhost")):
+        return True
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return "." not in host
+    return ip.is_loopback or ip.is_private or ip.is_link_local or ip.is_unspecified
+
+
+# mlx_lm.server's system_fingerprint: "<mlx-lm version>-<mlx version>-<platform>-<gpu>".
+_MLX_FINGERPRINT = re.compile(r"(\d+\.\d+\.\d+[\w.]*)-(\d+\.\d+\.\d+[\w.]*)-.+")
+
+
+def local_fingerprint(fp: str | None) -> str | None:
+    """A local server's system_fingerprint reduced to what a reproducer needs. A server on
+    this computer (mlx_lm.server) builds it from its library versions and the computer's
+    platform and GPU; provenance keeps the versions only. Another shape is dropped (None),
+    never guessed at."""
+    m = _MLX_FINGERPRINT.fullmatch(fp or "")
+    return f"mlx-lm {m.group(1)} / mlx {m.group(2)}" if m else None
 
 
 # The only top-level fields LLM_EXTRA_BODY may set: a gateway's routing object. Everything
@@ -594,8 +629,12 @@ class LLMJudge(Judge):
             # "rate-limited" is what scripts/audit_resumable.py looks for before sleeping.
             raise RuntimeError(f"rate-limited by {self.base_url} after retries ({last})")
         text = data["choices"][0]["message"]["content"]
-        self._served = {"model": data.get("model"),
-                        "system_fingerprint": data.get("system_fingerprint")}
+        fingerprint = data.get("system_fingerprint")
+        if _is_on_premises(self.base_url):
+            # served on this computer: the versions, not the computer (a hosted server's
+            # fingerprint identifies the vendor's serving build and is kept as reported)
+            fingerprint = local_fingerprint(fingerprint)
+        self._served = {"model": data.get("model"), "system_fingerprint": fingerprint}
         # A gateway may say which upstream served the request, in a "provider" field.
         self._upstream = checked_upstream(data.get("provider"), self.extra_body)
         usage = data.get("usage") or {}
