@@ -80,6 +80,105 @@ def test_no_absolute_home_path_in_docs(root):
     assert not bad, "absolute home paths published:\n" + "\n".join(bad[:10])
 
 
+# Text that describes one particular computer instead of a requirement. A model's or a
+# runtime's behaviour on a platform ("on Apple silicon", "on MPS") and a requirement ("needs
+# ~19 GB of memory", "an 80 GB GPU such as an A100 is required") are fine; a computer that a
+# run happened on (its memory, chip, OS build, GPU, "a laptop", someone's machine) is not.
+_SIZE = r"(?:\d+[- ]?GB|(?:eight|sixteen|twenty-four|thirty-two|sixty-four)[- ]gigabyte)"
+_BOX = r"(?:machine|mac|laptop|computer|box|desktop|workstation|server|notebook)s?"
+COMPUTER = re.compile("|".join([
+    rf"\b{_SIZE} {_BOX}\b",                                    # a 16 GB machine, 16-GB Mac
+    rf"\b{_BOX} (?:has|had|with) (?:an? )?{_SIZE}",             # the dev box has 16 GB RAM
+    rf"\bwith {_SIZE} of unified memory\b",                    # …unified memory, it swapped
+    r"\bApple M\d\b|\bon (?:the|an?|one) M\d\b|\bM-series\b",  # chip models
+    r"\blaptops?\b|\bnotebook computers?\b|\bMacBook\b|\bMac (?:mini|Studio|Pro)\b",
+    r"\b(?:maintainer|author|developer)'?s (?:own )?(?:machine|laptop|mac|computer|hardware|box)",
+    r"\b(?:our|my|their) (?:own )?(?:machine|mac|computer|server|box|desktop|workstation)s?\b",
+    r"\bApple[- ]silicon (?:machine|mac)s?\b",
+    r"\bDarwin \d|\bmacOS[- ]\d|applegpu_",                    # OS builds, GPU ids
+    rf"\b{_BOX} with an? (?:NVIDIA )?(?:RTX|GTX) ?\d{{3,4}}",    # a desktop with an RTX 4090
+    r"\b(?:NVIDIA )?(?:[AHL]100|(?:RTX|GTX) ?\d{3,4})\b[^.;]*\bon (?:our|my) ",  # …on our server
+]), re.I)
+# Recorded evidence keeps what it recorded. Each file is named: a new file that records a
+# computer fails the guard until it is listed here on purpose.
+EVIDENCE = frozenset([
+    *(f"docs/runs/v05-pilot/llm-qwen3-8b{s}.ckpt.jsonl" for s in ("", "-sc5", "-sc10")),
+    *(f"docs/runs/v05/banking77/llm-qwen3-8b{s}.ckpt.jsonl"
+      for s in ("", "-r2", "-r3", "-sc10", "-prompt-v2")),
+    *(f"docs/runs/v05/clinc150/llm-qwen3-8b{s}.ckpt.jsonl" for s in ("", "-sc10")),
+    *(f"docs/runs/v05/{d}/llm-qwen3-8b.ckpt.jsonl"
+      for d in ("email-routing-v2", "email-routing-adversarial-v2", "task-routing-v2")),
+    *(f"docs/runs/finetuned/{d}.train{r}.json"
+      for d in ("email-routing", "task-routing") for r in ("", "-run2")),
+    "docs/finetuned-baseline-2026-09.json", "docs/v05-pilot-estimates.json",
+])
+
+
+def _tracked(root: Path) -> list[str]:
+    """The tracked files; skips outside a git checkout (an sdist)."""
+    files: list[str] = []
+    try:
+        files = subprocess.run(["git", "ls-files"], cwd=root, capture_output=True, text=True,
+                               check=True).stdout.splitlines()
+    except (OSError, subprocess.CalledProcessError):
+        pytest.skip("not a git checkout")
+    return files
+
+
+def test_evidence_allowlist_is_exact(root):
+    """Every listed evidence file exists, so the list cannot hide a stale path."""
+    assert len(EVIDENCE) == 19
+    missing = sorted(f for f in EVIDENCE if not (root / f).is_file())
+    assert not missing, missing
+
+
+def test_no_text_describes_one_computer(root):
+    """Code, docs, tests, scripts, README and CHANGELOG state requirements (memory, device),
+    never the computer a run happened on."""
+    bad = []
+    for name in _tracked(root):
+        if name.startswith("examples/") or name in EVIDENCE:
+            continue  # third-party dataset text, or recorded evidence
+        if Path(name).suffix in (".png", ".gif", ".svg", ".mp4", ".webm", ".ico"):
+            continue
+        if name == "tests/test_published.py":
+            continue  # this file names the patterns
+        try:
+            text = (root / name).read_text(encoding="utf-8")
+        except (UnicodeDecodeError, FileNotFoundError):
+            continue
+        for i, line in enumerate(text.splitlines(), 1):
+            if COMPUTER.search(line):
+                bad.append(f"{name}:{i}: {line.strip()[:100]}")
+    assert not bad, "text describes one computer:\n" + "\n".join(bad[:20])
+
+
+@pytest.mark.parametrize("line", [
+    "does not fit a 16 GB machine", "runs on a laptop", "on one Apple M4",
+    "the maintainer's machine", "two Apple-silicon Macs", "Apple M4 (Darwin 25.6.0)",
+    "0.31.3-0.32.2-macOS-26.6.2-arm64-arm-64bit-applegpu_g16g", "a MacBook Air",
+    # paraphrases a review found the first pattern missed
+    "on the author's machine", "on the author's Mac", "on a 16-GB machine",
+    "the dev box has 16 GB RAM", "on the M4", "an M-series Mac with 16 GB",
+    "on a notebook computer", "sixteen-gigabyte machine",
+    "with 16 GB of unified memory, the model swapped", "on a desktop with an RTX 4090",
+    "GPU: NVIDIA A100 80GB on our server"])
+def test_the_computer_pattern_catches(line):
+    assert COMPUTER.search(line), line
+
+
+@pytest.mark.parametrize("line", [
+    "decider runs on the CPU by default on Apple silicon", "needs ~24 GB of memory",
+    "Clef-flash needs about 19 GB of memory in bfloat16", "on Apple MPS", "runs on your machine",
+    "the machine swallowed my card", "Linux CPU", "a rule of thumb for 16 GB",
+    "Clef needs about 55 GB", "requires 16 GB RAM", "a model that needs 24 GB of GPU memory",
+    "Kai-0.6B runs within 16 GB of memory", "an 80 GB GPU such as an A100 is required",
+    "| 16 GB | Laya; 7–8B chat models (about 5 GB) |", "MPS (Apple GPU)",
+    "the weights take about 19 GB in bfloat16", "grew to 12 GB resident and swapped"])
+def test_the_computer_pattern_ignores(line):
+    assert not COMPUTER.search(line), line
+
+
 def test_verify_published_compares_the_curve_and_zero_error_coverage(root):
     """The Jev clean-email audit publishes a curve and a zero-error coverage: both are
     compared point by point, not only n / accuracy / ECE / cost (#61)."""
