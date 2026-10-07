@@ -25,7 +25,7 @@ from .judges.base import Judge
 from .judges.simulated import SIMULATED_TAG
 from .report import IncompatibleBaseline
 from .report import check_drift as _check_drift
-from .runner import load_dataset, write_judgments
+from .runner import display_path, load_dataset, scrub, write_judgments
 from .runner import run_audit as _run_audit
 
 try:
@@ -140,13 +140,15 @@ def _load(labels_path: str) -> tuple[list[dict] | None, dict, dict | None]:
     """(rows, dataset header, error) — rows is None when error is set."""
     full = _resolve(labels_path)
     if full is None:
-        return None, {}, {"error": f"labels file not found: {labels_path} (cwd {os.getcwd()})"}
+        return None, {}, {"error": f"labels file not found: {display_path(labels_path)} "
+                                   "(a relative path is read from the server's working "
+                                   "directory)"}
     try:
         rows, dataset_meta = load_dataset(full)
     except (OSError, ValueError) as exc:
-        return None, {}, {"error": f"cannot read {labels_path}: {exc}"}
+        return None, {}, {"error": scrub(f"cannot read {labels_path}: {exc}", labels_path)}
     if not rows:
-        return None, {}, {"error": f"{labels_path} has no rows"}
+        return None, {}, {"error": f"{display_path(labels_path)} has no rows"}
     return rows, dataset_meta, None
 
 
@@ -156,7 +158,7 @@ def _make_judge(name: str, rows: list[dict]) -> tuple[Judge | None, str, dict | 
     try:
         judge, tag = _judge(name, rows)
     except (RuntimeError, ValueError) as exc:
-        return None, "", {"error": f"judge '{name}' is not configured: {exc}"}
+        return None, "", {"error": scrub(f"judge '{name}' is not configured: {exc}")}
     return judge, tag, None
 
 
@@ -195,7 +197,7 @@ def run_audit(labels_path: str, judge: str = "simulated",
         result = _run_audit(j, rows, labels_path=os.path.abspath(labels_path),
                             dataset_meta=dataset_meta)
     except Exception as exc:  # judge/network failure: report, do not crash the server
-        return {"error": f"audit failed: {type(exc).__name__}: {exc}"}
+        return {"error": scrub(f"audit failed: {type(exc).__name__}: {exc}", labels_path)}
     out = result.to_dict()
     gt = ground_truth_of(result.run)
     out["ground_truth"] = {"tier": gt.tier, "label": gt.label, "line": gt.report_line()}
@@ -204,9 +206,10 @@ def run_audit(labels_path: str, judge: str = "simulated",
     if judgments_path:
         try:
             write_judgments(result, judgments_path)
-            out["judgments_path"] = os.path.abspath(judgments_path)
+            out["judgments_path"] = display_path(os.path.abspath(judgments_path))
         except OSError as exc:
-            out["judgments_error"] = f"cannot write {judgments_path}: {exc}"
+            out["judgments_error"] = (f"cannot write {display_path(judgments_path)}: "
+                                      f"{type(exc).__name__}")
     return out
 
 
@@ -224,7 +227,8 @@ def check_drift(labels_path: str, baseline_path: str, judge: str = "simulated",
         return err or {"error": "internal: no rows or judge"}
     baseline = _resolve(baseline_path)
     if baseline is None:
-        return {"error": f"baseline file not found: {baseline_path} (cwd {os.getcwd()})"}
+        return {"error": f"baseline file not found: {display_path(baseline_path)} (a relative "
+                         "path is read from the server's working directory)"}
     j, tag, err = _make_judge(judge, rows)
     if err or j is None:
         return err or {"error": "internal: no rows or judge"}
@@ -234,11 +238,12 @@ def check_drift(labels_path: str, baseline_path: str, judge: str = "simulated",
         failures = _check_drift(result, baseline, max_ece_drift, max_acc_drop,
                                 allow_incompatible=allow_incompatible)
     except IncompatibleBaseline as exc:
-        return {"error": str(exc), "incompatible_baseline": True}
+        return {"error": scrub(str(exc), baseline_path, labels_path),
+                "incompatible_baseline": True}
     except (OSError, ValueError, KeyError) as exc:
-        return {"error": f"cannot use baseline {baseline_path}: {exc}"}
+        return {"error": scrub(f"cannot use baseline {baseline_path}: {exc}", baseline_path)}
     except Exception as exc:
-        return {"error": f"audit failed: {type(exc).__name__}: {exc}"}
+        return {"error": scrub(f"audit failed: {type(exc).__name__}: {exc}", labels_path)}
     out = {"ok": not failures, "failures": failures,
            "ece": result.ece, "accuracy": result.accuracy, "n": result.n,
            "ground_truth": ground_truth_of(result.run).tier,
