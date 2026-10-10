@@ -18,7 +18,7 @@ Up to 4 dev utterances per intent, seed 2026, the same items in the three locale
 
 ## 3. Judges
 
-Apple silicon, one local model in memory at a time; Python 3.12.8, torch 2.14.0, transformers 5.17.0, laya 0.3.20, mlx 0.32.2 installed. Checkpoint slug `<slug>-<locale>.ckpt.jsonl`.
+One machine with a GPU, one local model in memory at a time; Python 3.12.8, torch 2.14.0, transformers 5.17.0, laya 0.3.20, mlx 0.32.2 installed. Checkpoint slug `<slug>-<locale>.ckpt.jsonl`.
 
 | slug | judge | model and pin | device and precision | settings |
 |---|---|---|---|---|
@@ -57,3 +57,37 @@ All 15 runs finished on 2026-10-07 (first call 06:52Z, last 07:30Z; times in eac
 | `strands-decider-2b` (exploratory) | 230 / 230 / 230 | 0 | passed (MPS) | $0 (local) |
 
 `gemini-3.6-flash` was not run in the pilot. No accuracy or calibration figure is published from these checkpoints: they are planning inputs.
+
+*Wording note, 2026-10-10: §3's first line named the computer's platform; it now states the requirement only (a GPU), as the house rule on hardware asks (#152). No setting, device or result changes: each checkpoint header still records the device each run used (`cpu`, `mps`), which a reproducer needs.*
+
+## 6. Amendment, 2026-10-10: the two new primary judges
+
+Committed before any call written to this directory for these judges. The v0.6 plan's roster was changed before its freeze: Jev, `gpt-6-luna` and `claude-sonnet-4.5` are the primary judges. This amendment adds the pilot of the two new ones on the same 690 dev rows (§2), with the same rules (§4) and the same use: planning inputs, no score published. **No test row is called.**
+
+| slug | judge | model | confidence | settings |
+|---|---|---|---|---|
+| `gpt-6-luna` | `openai-decisions` | `gpt-6-luna` (OpenAI Decisions API), provider `hosted-api` | P(chosen option) from the per-option probabilities; the API's `confidence` kept in `raw.native_confidence` | `DECISIONS_QUESTIONS_PER_REQUEST=1` (default) |
+| `claude-sonnet-4.5` | `llm` | `claude-sonnet-4.5`, provider `hosted-api` | verbalized (model-reported probability), v0.5 prompt | temperature 0 (default), one call per row |
+
+1. Code: judge-audit 0.6.0rc2 (with the #155 fixes), Python 3.12.8.
+2. Order: a 5-row run per judge on `en-US` into a scratch directory (parse, cost recorded, served model), not committed; then `gpt-6-luna` on the three locales, then `claude-sonnet-4.5`, each with `scripts/audit_resumable.py`, checkpoints `docs/runs/v06-pilot/<slug>-<locale>.ckpt.jsonl`.
+3. Gate: §4 rule 3 as corrected and §5, plus for `claude-sonnet-4.5` (free text) `scripts/reparse_checkpoints.py` is not applicable either, so the gate is: every judgment parsed with a known confidence or counted as unknown, no blank answer, `scripts/check_complete.py` 0 gaps. More than 5 % unparsed among the first 40 rows stops the run.
+4. Between-run spread: 40 `en-US` rows run a second time per judge into `<slug>-en-US.repeat40.ckpt.jsonl`, the first 40 rows of the file, for the plan's §5.
+5. Cost ceiling: $5 for both judges together (estimate: `gpt-6-luna` about $0.06, `claude-sonnet-4.5` about $2.2, plus the 40-row repeats). The checkpoints' `cost_usd` total is reported; a run that would pass the ceiling is stopped.
+
+### What the amended runs recorded
+
+All 6 runs and the 2 repeats finished on 2026-10-10, with no restart. The first header time is 2026-10-10T10:49:27+00:00, and the last run started at 2026-10-10T11:11:12+00:00; each header gives its own time. Every checkpoint holds the 230 rows of its locale once, and `scripts/check_complete.py` reports 0 gaps. The 5-row scratch checks passed for both judges before the first run and were not committed.
+
+| slug | rows per locale (en-US / es-ES / ca-ES) | no answer | cost, from the checkpoints' `cost_usd` |
+|---|---|---|---|
+| `gpt-6-luna` | 230 / 230 / 230 | 3 per locale (1.3 %), all refusals flagged by the API (`raw.refusal`); 0 among the first 40 rows of each run | $0.0483 in all |
+| `claude-sonnet-4.5` | 230 / 230 / 230 | 0; every confidence known | $1.9642 in all |
+
+**Between-run spread.** Both judges reran the first 40 `en-US` rows into `<slug>-en-US.repeat40.ckpt.jsonl`.
+- `gpt-6-luna` gave the same decision on 40 of 40 rows, and the confidence did not change on any row.
+- `claude-sonnet-4.5` gave the same decision on 40 of 40 rows. Its mean absolute confidence change was 0.0013, and the largest was 0.05.
+- The repeats cost $0.0028 and $0.1064.
+- The repeats read `first40-en-US.jsonl`, which is the first 41 lines of `examples/massive/labels-pilot-en-US.jsonl`: the header and rows 0–39 (`head -41`), sha256 `6d5ed014d93dc64bf1b789556ae516ef884dbe95751ab5572443451b9202a5e5`, as recorded in their headers. That file is committed as `examples/massive/labels-pilot-en-US.first40.jsonl` (same bytes, same sha256), and `scripts/check_complete.py` reads it for these two checkpoints (`SCRATCH`). The headers are left as the runs wrote them.
+
+Total cost of the amendment, repeats included: $2.12, within the $5 ceiling. No accuracy or calibration figure is published from these checkpoints: they are planning inputs.
