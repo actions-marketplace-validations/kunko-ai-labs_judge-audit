@@ -341,3 +341,269 @@ def test_a_scratch_dataset_is_read_from_its_committed_copy_with_the_same_digest(
         data = (check_complete.ROOT / path).read_bytes()
         assert hashlib.sha256(data).hexdigest() == header["sha256"], name   # the same file, renamed
         assert check_complete.gaps(ckpt) == []
+
+
+# --- #80: a judge that answers nothing has an unknown latency, not an instant one ---------
+
+def test_nothing_answered_publishes_null_latency_not_zero():
+    import json
+
+    r = run_audit(Scripted(lambda s: []), rows(2), ci=False)
+    assert (r.p50_latency_s, r.p99_latency_s, r.max_latency_s) == (None, None, None)
+    d = json.loads(json.dumps(r.to_dict()))
+    assert (d["p50_latency_s"], d["p99_latency_s"], d["max_latency_s"]) == (None, None, None)
+
+
+def test_the_reports_print_unknown_latency_when_nothing_was_answered():
+    from judge_audit.report import render_html
+
+    r = run_audit(Scripted(lambda s: []), rows(2), ci=False)
+    md = render_markdown(r)
+    assert "p50 **unknown** · p99 **unknown** · slowest **unknown**" in md
+    assert "0.0s" not in md and "Nones" not in md
+    page = render_html(r)
+    assert "p50 <b>unknown</b> · p99 <b>unknown</b> · slowest <b>unknown</b>" in page
+    assert "p50 unknown · p99 unknown" in page
+    assert "0.0s" not in page and "Nones" not in page
+
+
+def test_a_known_latency_still_prints_as_before():
+    timed = [Judgment(question=q, decision={"a": "x", "b": "y"}[q], confidence=0.9,
+                      latency_s=0.25) for q in ("a", "b")]
+    md = render_markdown(run_audit(Scripted(lambda s: timed), rows(2), ci=False))
+    assert "p50 **0.25s** · p99 **0.25s** · slowest **0.25s**" in md
+
+
+def test_an_older_result_without_the_slowest_call_prints_no_slowest():
+    from judge_audit.report import slowest
+
+    assert slowest({"p50_latency_s": 0.4}) == ""
+    assert slowest({"max_latency_s": None}) == " · slowest **unknown**"
+
+
+def test_the_percentile_of_no_latencies_is_unknown():
+    from judge_audit.runner import _percentile
+
+    assert _percentile([], 50) is None
+    assert _percentile([1.0, 3.0], 50) == 2.0
+
+
+def _silent(n=3):
+    return [{"decision": "", "confidence": None, "correct": False, "parse_status": "no_answer",
+             "latency_s": None, "cost_usd": 0.0, "meta": {}, "state": f"s{i}",
+             "text_equal_train": False, "text_contains_train": False, "no_answer": True}
+            for i in range(n)]
+
+
+def test_the_arena_summary_has_unknown_latency_when_nothing_was_answered():
+    _scripts()
+    from arena_report import summarize
+
+    assert summarize(_silent(), "email-clean")["p50_latency_s"] is None
+
+
+def test_the_heldout_summary_has_unknown_latency_and_prints_unknown():
+    _scripts()
+    from heldout_report import secs, summarize
+
+    assert summarize(_silent(), "email-clean")["p50_latency_s"] is None
+    assert secs(None, 2) == "unknown" and secs(0.4567, 3) == "0.457 s"
+
+
+def test_a_jury_with_a_member_of_unknown_latency_has_unknown_latency():
+    _scripts()
+    from consensus_report import jury_latency
+
+    assert jury_latency([{"p50_latency_s": 1.0}, {"p50_latency_s": 3.0}]) == 2.0
+    assert jury_latency([{"p50_latency_s": 1.0}, {"p50_latency_s": None}]) is None
+    assert jury_latency([{"p50_latency_s": 1.0}, None]) is None
+
+
+def test_the_pr_comment_prints_unknown_latency():
+    import importlib.util
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parent.parent / "scripts" / "pr_comment.py"
+    spec = importlib.util.spec_from_file_location("pr_comment_80", path)
+    pr_comment = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(pr_comment)
+    md = pr_comment.build({
+        "judge": "simulated", "n": 2, "accuracy": 0.0, "ece": None,
+        "confidence": {"known": 0, "total": 2},
+        "zero_error_coverage": {"coverage": None, "n": 0, "threshold": None},
+        "total_cost_usd": 0.0, "p50_latency_s": None, "p99_latency_s": None,
+        "max_latency_s": None,
+        "run": {"judge": {"name": "simulated", "seed": 7}, "dataset": {"rows": 1}}})
+    assert "| unknown | unknown | unknown |" in md
+    assert "None" not in md
+
+
+# --- #80: check_complete compares the dataset with the digest its checkpoint recorded -------
+
+def _hashed_run(tmp_path, monkeypatch, header_line=False, **digests):
+    import json
+    from pathlib import Path
+
+    _scripts()
+    import check_complete
+
+    from judge_audit.runner import sha256_of, sha256_rows_of
+
+    labels = tmp_path / "labels.jsonl"
+    body = "\n".join(json.dumps(r) for r in rows(2)) + "\n"
+    head = ""
+    if header_line:   # a committed dataset's ground-truth header line, as the runner reads it
+        root = Path(__file__).resolve().parent.parent
+        head = (root / "examples" / "email-routing" / "labels.jsonl").read_text(
+            encoding="utf-8").splitlines(keepends=True)[0]
+    labels.write_text(head + body)
+    recorded = {"sha256": sha256_of(str(labels)), "sha256_rows": sha256_rows_of(str(labels))}
+    recorded.update(digests)
+    ans = [{"question": "a", "decision": "x"}, {"question": "b", "decision": "y"}]
+    ds = {"path": str(labels), **{k: v for k, v in recorded.items() if v is not None}}
+    lines = [{"idx": -1, "run": {"dataset": ds}},
+             {"idx": 0, "judgments": ans}, {"idx": 1, "judgments": ans}]
+    ckpt = tmp_path / "x.ckpt.jsonl"
+    ckpt.write_text("\n".join(json.dumps(x) for x in lines) + "\n")
+    monkeypatch.setattr(check_complete, "ROOT", Path("/"))
+    return check_complete, ckpt, labels
+
+
+def test_a_dataset_with_its_recorded_digest_passes(tmp_path, monkeypatch):
+    cc, ckpt, _ = _hashed_run(tmp_path, monkeypatch)
+    assert cc.gaps(ckpt) == []
+
+
+def test_a_relabelled_dataset_fails_the_completeness_check(tmp_path, monkeypatch):
+    cc, ckpt, labels = _hashed_run(tmp_path, monkeypatch)
+    labels.write_text(labels.read_text().replace('"b": "y"', '"b": "x"', 1))
+    found = cc.gaps(ckpt)
+    assert len(found) == 1 and "dataset sha256" in found[0] and "changed" in found[0]
+
+
+def test_either_recorded_digest_is_accepted(tmp_path, monkeypatch):
+    # a run made before the header line recorded the whole file: today's rows digest
+    cc, ckpt, _ = _hashed_run(tmp_path, monkeypatch, header_line=True, sha256="00" * 32)
+    assert cc.gaps(ckpt) == []
+    cc, ckpt, _ = _hashed_run(tmp_path, monkeypatch, header_line=True, sha256_rows=None)
+    assert cc.gaps(ckpt) == []
+    cc, ckpt, _ = _hashed_run(tmp_path, monkeypatch, sha256="00" * 32, sha256_rows="11" * 32)
+    assert len(cc.gaps(ckpt)) == 1
+
+
+def test_a_header_without_a_digest_is_not_held_to_one(tmp_path, monkeypatch):
+    cc, ckpt, _ = _hashed_run(tmp_path, monkeypatch, sha256=None, sha256_rows=None)
+    assert cc.gaps(ckpt) == []
+
+
+def test_a_legacy_checkpoint_is_held_to_its_pinned_rows_digest(tmp_path, monkeypatch):
+    cc, ckpt, labels = _hashed_run(tmp_path, monkeypatch)
+    legacy = tmp_path / "audit-legacy.ckpt.jsonl"      # the first audits had no header line
+    legacy.write_text("\n".join(ckpt.read_text().splitlines()[1:]) + "\n")
+    from judge_audit.runner import sha256_rows_of
+
+    monkeypatch.setattr(cc, "LEGACY", {legacy.name: (str(labels), sha256_rows_of(str(labels)))})
+    assert cc.gaps(legacy) == []
+    monkeypatch.setattr(cc, "LEGACY", {legacy.name: (str(labels), "00" * 32)})
+    found = cc.gaps(legacy)
+    assert len(found) == 1 and "dataset sha256" in found[0]
+
+
+def test_the_dataset_gap_names_paths_relative_to_the_repo(tmp_path, monkeypatch):
+    cc, ckpt, labels = _hashed_run(tmp_path, monkeypatch)
+    monkeypatch.setattr(cc, "ROOT", tmp_path)
+    labels.write_text(labels.read_text().replace('"b": "y"', '"b": "x"', 1))
+    [found] = cc.gaps(ckpt)
+    assert found.startswith("x.ckpt.jsonl: dataset sha256 changed") and " labels.jsonl is " in found
+    assert str(tmp_path) not in found
+
+
+def _subset_run(tmp_path, monkeypatch, split_rows, recorded_sha=None, recorded_n=None):
+    """A checkpoint over a split's `heldout` part of a 70-row dataset, every row answered."""
+    import json
+    from pathlib import Path
+
+    _scripts()
+    import check_complete
+
+    from judge_audit.runner import sha256_of
+
+    labels = tmp_path / "labels.jsonl"
+    labels.write_text("\n".join(json.dumps(r) for r in rows(70)) + "\n")
+    split = tmp_path / "split.json"
+    split.write_text(json.dumps({"heldout": split_rows}))
+    subset = {"split": str(split), "part": "heldout",
+              "sha256": recorded_sha or sha256_of(str(split)),
+              "n": len(split_rows) if recorded_n is None else recorded_n}
+    ans = [{"question": "a", "decision": "x"}, {"question": "b", "decision": "y"}]
+    lines = [{"idx": -1, "run": {"dataset": {"path": str(labels)}, "rows_subset": subset}}]
+    lines += [{"idx": i, "judgments": ans} for i in sorted(split_rows)]
+    ckpt = tmp_path / "s.ckpt.jsonl"
+    ckpt.write_text("\n".join(json.dumps(x) for x in lines) + "\n")
+    monkeypatch.setattr(check_complete, "ROOT", Path("/"))
+    return check_complete, ckpt, split
+
+
+def test_a_subset_run_on_its_recorded_split_passes(tmp_path, monkeypatch):
+    cc, ckpt, _ = _subset_run(tmp_path, monkeypatch, list(range(0, 60)))
+    assert cc.gaps(ckpt) == []
+
+
+def test_a_cut_of_the_heldout_split_fails_the_completeness_check(tmp_path, monkeypatch):
+    """task-routing's 60-row held-out split cut to its first 30 rows, the checkpoint holding
+    only those 30: every row it covers is answered, but it is not the split the run named."""
+    import json
+    from pathlib import Path
+
+    from judge_audit.runner import sha256_of
+
+    committed = (Path(__file__).resolve().parent.parent / "examples" / "task-routing"
+                 / "split-heldout.json")
+    heldout = sorted(json.loads(committed.read_text(encoding="utf-8"))["heldout"])
+    assert len(heldout) == 60
+    cut = heldout[:30]
+    # the header recorded the committed split; the file it names now holds 30 rows
+    cc, ckpt, _ = _subset_run(tmp_path, monkeypatch, cut,
+                              recorded_sha=sha256_of(str(committed)), recorded_n=60)
+    found = cc.gaps(ckpt)
+    assert any("split" in g and "sha256 changed" in g for g in found), found
+    assert any("60 rows" in g and "30" in g for g in found), found
+    # the same cut with a matching digest but the original size still fails on n
+    cc, ckpt, _ = _subset_run(tmp_path, monkeypatch, cut, recorded_n=60)
+    assert [g for g in cc.gaps(ckpt) if "60 rows" in g], cc.gaps(ckpt)
+
+
+def test_the_cost_probe_split_is_held_to_its_recorded_digest(tmp_path, monkeypatch):
+    """The v05 pilot's cost probe (docs/runs/v05-pilot/cost-probe-rows.json) is checked too:
+    its committed checkpoints pass, and the same checkpoint with another recorded digest
+    does not."""
+    import json
+
+    _scripts()
+    import check_complete
+
+    probes = [c for c in sorted((check_complete.ROOT / "docs" / "runs").rglob("*.ckpt.jsonl"))
+              if "cost-probe-rows.json" in c.read_text(encoding="utf-8").splitlines()[0]]
+    assert probes
+    for ckpt in probes:
+        assert check_complete.gaps(ckpt) == [], ckpt
+    lines = probes[0].read_text(encoding="utf-8").splitlines()
+    head = json.loads(lines[0])
+    assert head["run"]["rows_subset"]["split"] == "docs/runs/v05-pilot/cost-probe-rows.json"
+    head["run"]["rows_subset"]["sha256"] = "00" * 32
+    moved = tmp_path / probes[0].name
+    moved.write_text("\n".join([json.dumps(head)] + lines[1:]) + "\n")
+    found = check_complete.gaps(moved)
+    assert any("cost-probe-rows.json" in g and "sha256 changed" in g for g in found), found
+
+
+def test_the_legacy_pins_are_the_digests_of_the_files_the_first_audits_read():
+    # the rows digest of each file as committed with its checkpoint (v0.2.0): a header
+    # line added later does not move it, a changed row would
+    _scripts()
+    import check_complete
+
+    from judge_audit.runner import sha256_rows_of
+
+    for path, digest in check_complete.LEGACY.values():
+        assert sha256_rows_of(str(check_complete.ROOT / path)) == digest, path
