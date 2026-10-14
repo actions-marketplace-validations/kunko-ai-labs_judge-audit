@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import functools
 import json
+import math
 import os
 import re
 import shutil
@@ -32,6 +33,8 @@ import sys
 import tempfile
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
+
+from judge_audit.metrics.selective import risk_upper_bound
 
 ROOT = Path(__file__).resolve().parent.parent
 DAGGER = "†"   # the exact Clopper–Pearson interval, printed where the bootstrap cannot move
@@ -583,7 +586,7 @@ def v05_expected(d: dict) -> dict[str, list[str]]:
         p = m[f"banking77/{run}"]["strict"]["certification"][target]["pooled"]
         tail = (f"({p['errors']} errors / {p['covered']} automated)" if long
                 else f"({p['errors']} / {p['covered']})")
-        return f"{_pc(p['coverage'])} at ≤ {round(float(target) * 100)} % {tail}"
+        return f"{_pc(p['coverage'])} at a {round(float(target) * 100)} % target {tail}"
 
     jev10 = m["banking77/jev"]["strict"]["certification"]
     s5, s10 = jev10["0.05"]["spread_coverage"], jev10["0.1"]["spread_coverage"]
@@ -614,7 +617,8 @@ def v05_expected(d: dict) -> dict[str, list[str]]:
             f"in {worse} of {len(sc)} tests under the pre-registered rule ({worse_rr} of {len(sc)} "
             "under the re-reading)",
             f"{flip_text} with how an answer that copies an option's description is scored",
-            f"On BANKING77 at ≤ 5 % error, Jev native probability can decide {rate('jev')} over "
+            f"On BANKING77 at a 5 % error target, validated on held-out texts, Jev native "
+            f"probability can decide {rate('jev')} over "
             f"split seeds {seeds[0]}–{seeds[1]}) of the texts alone, gemini-3.6-flash verbalized "
             f"{rate('llm-gemini-3.6-flash')}), Qwen3-8B token log-probability "
             f"{rate('logprob-qwen3-8b')})",
@@ -670,7 +674,7 @@ def v05_expected(d: dict) -> dict[str, list[str]]:
             f"Qwen3-8B token log-probability {cert('logprob-qwen3-8b', '0.05', True)[:-1]}; "
             f"{_pc(spread5('logprob-qwen3-8b')[0])}–{_pc(spread5('logprob-qwen3-8b')[1])} over the "
             f"same seeds) and {cert('logprob-qwen3-8b', '0.1', False)}",
-            *(["On BANKING77 no run automates anything at ≤ 1 % or ≤ 2 %"] if nothing_low else []),
+            *(["On BANKING77 no run automates anything at a 1 % or 2 % target"] if nothing_low else []),
             caveat + "every bound includes the datasets' own label errors, because label noise "
             + "was not measured",
             "the held-out slice was not run (#106)",
@@ -682,18 +686,21 @@ def v05_expected(d: dict) -> dict[str, list[str]]:
 GLANCE_ROWS = {"Jev, native probability": "jev",
                "gemini-3.6-flash, verbalized": "llm-gemini-3.6-flash",
                "Qwen3-8B, token log-probability": "logprob-qwen3-8b"}
-GLANCE_HEAD = ("| Judge and confidence | Decides alone at ≤ 5 % error | Range over split seeds | "
-               "At ≤ 10 % error |")
+GLANCE_HEAD = ("| Judge and confidence | Validated share at a 5 % error target | "
+               "95 % upper bound on the error rate | Range over split seeds | "
+               "At a 10 % error target |")
 
 
 def check_v05_glance(ck: Checker, md: str) -> None:
     """The "At a glance" table of the v0.5 findings: one row per run, every cell rebuilt from
-    docs/v05-results.json (the pooled cross-fit rate at 5 %, its spread over split seeds, the
-    rate at 10 %), and the caption's row count."""
+    docs/v05-results.json (the pooled cross-fit rate at 5 %, the exact one-sided 95 % bound on
+    its held-out errors, rounded up, its spread over split seeds, the rate at 10 %), and the
+    caption's row count."""
     d = load("v05-results.json")
     m = d["metrics"]
-    cap = re.search(r"\*\*At a glance: BANKING77, ([\d,]+) human-labelled banking queries, decided "
-                    r"alone at an error of at most (\d+) %\.\*\*", md)
+    cap = re.search(r"\*\*At a glance: BANKING77, ([\d,]+) human-labelled banking queries: the "
+                    r"share each judge decides alone at a (\d+) % error target, validated on "
+                    r"held-out texts\.\*\*", md)
     ck.eq("v0.5 at a glance / rows", cap and cap.group(1), f"{m['banking77/jev']['strict']['n']:,}")
     ck.eq("v0.5 at a glance / caption target", cap and cap.group(2), "5")
     if GLANCE_HEAD not in md:
@@ -708,16 +715,22 @@ def check_v05_glance(ck: Checker, md: str) -> None:
             ck.failures.append(f"v0.5 at a glance: row {label!r} appears {seen.count(label)} times")
             continue
         r = rows[seen.index(label)]
-        if len(r) != 4:
-            ck.failures.append(f"v0.5 at a glance: row {label!r} has {len(r)} cells, not 4")
+        if len(r) != 5:
+            ck.failures.append(f"v0.5 at a glance: row {label!r} has {len(r)} cells, not 5")
             continue
         c = m[f"banking77/{run}"]["strict"]["certification"]
         five, ten = c["0.05"]["pooled"], c["0.1"]["pooled"]
         lo, hi = c["0.05"]["spread_coverage"]
-        want = [f"**{_pc(five['coverage']) if five['covered'] else 'none'}**",
+        def up(p: dict) -> str:                                 # rounded up, never down
+            if not p["covered"]:
+                return "—"
+            return f"{math.ceil(risk_upper_bound(p['errors'], p['covered']) * 1000 - 1e-9) / 10:.1f} %"
+
+        want = [f"**{_pc(five['coverage']) if five['covered'] else 'none'}**", up(five),
                 f"{lo * 100:.1f}–{hi * 100:.1f} %",
-                _pc(ten["coverage"]) if ten["covered"] else "none"]
-        for where, got, exp in zip(("at 5 %", "spread", "at 10 %"), r[1:4], want, strict=True):
+                f"{_pc(ten['coverage'])} (bound {up(ten)})" if ten["covered"] else "none"]
+        for where, got, exp in zip(("at 5 %", "bound", "spread", "at 10 %"), r[1:5], want,
+                                   strict=True):
             ck.eq(f"v0.5 at a glance / {label} / {where}", got, exp)
     for extra in set(seen) - set(GLANCE_ROWS):
         ck.failures.append(f"v0.5 at a glance: unknown row {extra!r}")
@@ -745,8 +758,10 @@ def check_demo_figures(ck: Checker) -> None:
     ck.eq("demo / run command", sim["command_run"], DEMO_RUN)
     ck.eq("demo / check command", sim["command_check"], DEMO_CHECK)
     line = simulated_line("0.10")
+    # the gif's `safe_automation@10%=` figure predates #185: it is the share on all rows,
+    # which the line now prints as `all_rows=`
     for key, label in (("n", "n="), ("accuracy", "accuracy="),
-                       ("safe_automation_at_10pct", "safe_automation@10%=")):
+                       ("safe_automation_at_10pct", "all_rows=")):
         found = re.search(re.escape(label) + r"([\d.]+%?)", line)
         ck.eq(f"demo / simulated / {key}", str(sim[key]), found and found.group(1))
     code, text = demo_check()
@@ -877,7 +892,7 @@ def check_gate(ck: Checker, md: str) -> None:
     if prose.group(2) != str(rc_here):
         ck.failures.append(f"quickstart: the prose says the gate exits {prose.group(2)} here, a "
                            f"fresh check exits {rc_here}")
-    rate = re.search(r"safe_automation@10%=([\d.]+)%", simulated_line("0.10"))
+    rate = re.search(r"all_rows=([\d.]+)%", simulated_line("0.10"))      # the gated share
     above = f"{float(rate.group(1)) / 100 + 0.01:.3f}" if rate else "1.0"
     rc_above = simulated_check(above)
     if prose.group(3) != str(rc_above) or rc_above != 1:
@@ -895,10 +910,14 @@ def check_quickstart(ck: Checker, md: str) -> None:
     line = simulated_line("0.10")
     if not shown or not line.startswith(shown.group(1)):
         ck.failures.append(f"quickstart: the printed line is not the start of a fresh run: {line!r}")
-    rate = re.search(r"safe_automation@10%=(\S+)", line)
-    value = rate.group(1).rstrip("%") if rate else "?"
-    if f"its {value} % says nothing" not in md:
-        ck.failures.append(f"quickstart: the prose's figure is not the fresh run's {value} %")
+    held = re.search(r"safe_automation@10%=not_met\(([\d.]+)% bound=([\d.]+)%\) "
+                     r"all_rows=([\d.]+)%", line)
+    want = ([f"so the {held.group(1)} % held out", f"held-out error rate ({held.group(2)} %)",
+             f"`all_rows` ({held.group(3)} %)"] if held else ["?"])
+    for figure in want:
+        if figure not in md:
+            ck.failures.append(f"quickstart: the prose's figure {figure!r} is not the fresh "
+                               "run's")
     default = re.search(r"safe_automation@5%=\S+", simulated_line(None))
     if not default or f"the line reads `{default.group(0)}`" not in md:
         ck.failures.append("quickstart: the default-target figure is not a fresh run's "
