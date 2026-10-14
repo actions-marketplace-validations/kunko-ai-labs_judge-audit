@@ -239,7 +239,7 @@
         "targets": [
           {
             "target_risk": 0.01,
-            "plain": "at most 1 in 100 automated decisions wrong",
+            "plain": "a target of 1 wrong in every 100 automated decisions",
             "primary": false,
             "threshold": null,
             "n": 200,
@@ -257,6 +257,7 @@
               "errors": 0,
               "coverage": 0.0,
               "risk": null,
+              "risk_upper": null,
               "spread_seeds": [
                 0,
                 9
@@ -265,7 +266,7 @@
                 0.0,
                 0.0
               ],
-              "reason": "a half holds at most 100 decisions with a confidence; the target needs 628"
+              "reason": "too few decisions to check on held-out data (each half needs 628, the larger has 100)"
             },
             "segments": [],
             "worst_segment": null,
@@ -284,7 +285,7 @@
           },
           {
             "target_risk": 0.02,
-            "plain": "at most 1 in 50 automated decisions wrong",
+            "plain": "a target of 1 wrong in every 50 automated decisions",
             "primary": false,
             "threshold": null,
             "n": 200,
@@ -302,6 +303,7 @@
               "errors": 0,
               "coverage": 0.0,
               "risk": null,
+              "risk_upper": null,
               "spread_seeds": [
                 0,
                 9
@@ -310,7 +312,7 @@
                 0.0,
                 0.0
               ],
-              "reason": "a half holds at most 100 decisions with a confidence; the target needs 313"
+              "reason": "too few decisions to check on held-out data (each half needs 313, the larger has 100)"
             },
             "segments": [],
             "worst_segment": null,
@@ -329,7 +331,7 @@
           },
           {
             "target_risk": 0.05,
-            "plain": "at most 1 in 20 automated decisions wrong",
+            "plain": "a target of 1 wrong in every 20 automated decisions",
             "primary": true,
             "threshold": null,
             "n": 200,
@@ -338,7 +340,7 @@
             "errors": 0,
             "risk_upper": null,
             "min_units": 124,
-            "reason": "no threshold passes: the first cut tested holds 177 decisions with 31 errors (bound 22.9% > 5%)",
+            "reason": "no threshold passes: the first cut tested holds 177 decisions with 31 errors (95% upper bound on the error rate 22.9%, above the 5% target)",
             "first_cut": {
               "units": 177,
               "errors": 31,
@@ -351,6 +353,7 @@
               "errors": 0,
               "coverage": 0.0,
               "risk": null,
+              "risk_upper": null,
               "spread_seeds": [
                 0,
                 9
@@ -359,7 +362,7 @@
                 0.0,
                 0.0
               ],
-              "reason": "a half holds at most 100 decisions with a confidence; the target needs 124"
+              "reason": "too few decisions to check on held-out data (each half needs 124, the larger has 100)"
             },
             "segments": [],
             "worst_segment": null,
@@ -372,7 +375,7 @@
               "coverage": 0.0,
               "threshold": null,
               "risk_upper": null,
-              "reason": "no threshold passes: the first cut tested holds 166 texts with 31 errors (bound 24.4% > 5%)",
+              "reason": "no threshold passes: the first cut tested holds 166 texts with 31 errors (95% upper bound on the error rate 24.4%, above the 5% target)",
               "first_cut": {
                 "units": 166,
                 "errors": 31,
@@ -382,7 +385,7 @@
           },
           {
             "target_risk": 0.1,
-            "plain": "at most 1 in 10 automated decisions wrong",
+            "plain": "a target of 1 wrong in every 10 automated decisions",
             "primary": false,
             "threshold": null,
             "n": 200,
@@ -391,7 +394,7 @@
             "errors": 0,
             "risk_upper": null,
             "min_units": 61,
-            "reason": "no threshold passes: the first cut tested holds 84 decisions with 29 errors (bound 44.0% > 10%)",
+            "reason": "no threshold passes: the first cut tested holds 84 decisions with 29 errors (95% upper bound on the error rate 44.0%, above the 10% target)",
             "first_cut": {
               "units": 84,
               "errors": 29,
@@ -404,6 +407,7 @@
               "errors": 0,
               "coverage": 0.0,
               "risk": null,
+              "risk_upper": null,
               "spread_seeds": [
                 0,
                 9
@@ -425,7 +429,7 @@
               "coverage": 0.0,
               "threshold": null,
               "risk_upper": null,
-              "reason": "no threshold passes: the first cut tested holds 83 texts with 29 errors (bound 44.5% > 10%)",
+              "reason": "no threshold passes: the first cut tested holds 83 texts with 29 errors (95% upper bound on the error rate 44.5%, above the 10% target)",
               "first_cut": {
                 "units": 83,
                 "errors": 29,
@@ -438,8 +442,8 @@
     ]
   },
   "regenerated": {
-    "utc": "2026-10-07T07:06:26+00:00",
-    "judge_audit_version": "0.5.1",
+    "utc": "2026-10-14T13:25:02+00:00",
+    "judge_audit_version": "0.6.0rc2",
     "script": "scripts/runs_report.py",
     "checkpoint": "docs/runs/arena/gemma4/email-adversarial.ckpt.jsonl",
     "labels": "examples/email-routing-adversarial/labels.jsonl"
